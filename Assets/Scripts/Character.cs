@@ -7,12 +7,7 @@ public class Character : MonoBehaviour
     #region 变量
 
     private GameObject mSkeleton;
-    private GameObject mEyes;
-    private GameObject mFace;
-    private GameObject mHair;
-    private GameObject mPants;
-    private GameObject mShoes;
-    private GameObject mTop;
+    private GameObject[] parts;
     private Animation mAnim;
 
     /// <summary>
@@ -25,14 +20,16 @@ public class Character : MonoBehaviour
     #region 内置函数
 
     // Use this for initialization
-    void Start () {
-		
-	}
-	
-	// Update is called once per frame
-	void Update () {
-		
-	}
+    void Start()
+    {
+
+    }
+
+    // Update is called once per frame
+    void Update()
+    {
+
+    }
 
     #endregion
 
@@ -56,12 +53,16 @@ public class Character : MonoBehaviour
         if (mSkeleton != null)
             GameObject.DestroyImmediate(mSkeleton);
 
-        mEyes = null;
-        mFace = null;
-        mHair = null;
-        mPants = null;
-        mShoes = null;
-        mTop = null;
+
+        if (parts != null)
+        {
+            for (int i = 0; i < parts.Length; i++)
+            {
+                if (parts[i])
+                    DestroyImmediate(parts[i]);
+                parts[i] = null;
+            }
+        }
     }
 
     private void GenerateUnCombine(AvatarRes avatarres)
@@ -74,12 +75,10 @@ public class Character : MonoBehaviour
 
         mAnim = mSkeleton.GetComponent<Animation>();
 
-        ChangeEquipUnCombine((int)EPart.EP_Eyes, avatarres);
-        ChangeEquipUnCombine((int)EPart.EP_Face, avatarres);
-        ChangeEquipUnCombine((int)EPart.EP_Hair, avatarres);
-        ChangeEquipUnCombine((int)EPart.EP_Pants, avatarres);
-        ChangeEquipUnCombine((int)EPart.EP_Shoes, avatarres);
-        ChangeEquipUnCombine((int)EPart.EP_Top, avatarres);
+        for (int i = 0; i < avatarres.awatarParts.Length; i++)
+        {
+            ChangeEquipUnCombine(i, avatarres);
+        }
 
         ChangeAnim(avatarres);
     }
@@ -107,12 +106,11 @@ public class Character : MonoBehaviour
         List<CombineInstance> combineInstances = new List<CombineInstance>();
         List<Material> materials = new List<Material>();
         List<Transform> bones = new List<Transform>();
-        ChangeEquipCombine((int)EPart.EP_Eyes, avatarres, ref combineInstances, ref materials, ref bones);
-        ChangeEquipCombine((int)EPart.EP_Face, avatarres, ref combineInstances, ref materials, ref bones);
-        ChangeEquipCombine((int)EPart.EP_Hair, avatarres, ref combineInstances, ref materials, ref bones);
-        ChangeEquipCombine((int)EPart.EP_Pants, avatarres, ref combineInstances, ref materials, ref bones);
-        ChangeEquipCombine((int)EPart.EP_Shoes, avatarres, ref combineInstances, ref materials, ref bones);
-        ChangeEquipCombine((int)EPart.EP_Top, avatarres, ref combineInstances, ref materials, ref bones);
+
+        for (int i = 0; i < avatarres.awatarParts.Length; i++)
+        {
+            ChangeEquipCombine(i, avatarres, ref combineInstances, ref materials, ref bones);
+        }
 
         // Obtain and configure the SkinnedMeshRenderer attached to
         // the character base.
@@ -131,33 +129,13 @@ public class Character : MonoBehaviour
         ChangeAnim(avatarres);
     }
 
-    private void ChangeEquipCombine(int type, AvatarRes avatarres, ref List<CombineInstance> combineInstances, 
+    private void ChangeEquipCombine(int type, AvatarRes avatarres, ref List<CombineInstance> combineInstances,
                         ref List<Material> materials, ref List<Transform> bones)
     {
-        if (type == (int)EPart.EP_Eyes)
-        {
-            ChangeEquipCombine(avatarres.mEyesList[avatarres.mEyesIdx], ref combineInstances, ref materials, ref bones);
-        }
-        else if (type == (int)EPart.EP_Face)
-        {
-            ChangeEquipCombine(avatarres.mFaceList[avatarres.mFaceIdx], ref combineInstances, ref materials, ref bones);
-        }
-        else if (type == (int)EPart.EP_Hair)
-        {
-            ChangeEquipCombine(avatarres.mHairList[avatarres.mHairIdx], ref combineInstances, ref materials, ref bones);
-        }
-        else if (type == (int)EPart.EP_Pants)
-        {
-            ChangeEquipCombine(avatarres.mPantsList[avatarres.mPantsIdx], ref combineInstances, ref materials, ref bones);
-        }
-        else if (type == (int)EPart.EP_Shoes)
-        {
-            ChangeEquipCombine(avatarres.mShoesList[avatarres.mShoesIdx], ref combineInstances, ref materials, ref bones);
-        }
-        else if (type == (int)EPart.EP_Top)
-        {
-            ChangeEquipCombine(avatarres.mTopList[avatarres.mTopIdx], ref combineInstances, ref materials, ref bones);
-        }
+
+        int partIndex = avatarres.selectedIndexs[type];
+        ChangeEquipCombine(avatarres.awatarParts[type].parts[partIndex], ref combineInstances, ref materials, ref bones);
+
     }
 
     private void ChangeEquipCombine(GameObject resgo, ref List<CombineInstance> combineInstances,
@@ -198,30 +176,12 @@ public class Character : MonoBehaviour
 
     public void ChangeEquipUnCombine(int type, AvatarRes avatarres)
     {
-        if (type == (int)EPart.EP_Eyes)
-        {
-            ChangeEquipUnCombine(ref mEyes, avatarres.mEyesList[avatarres.mEyesIdx]);
-        }
-        else if (type == (int)EPart.EP_Face)
-        {
-            ChangeEquipUnCombine(ref mFace, avatarres.mFaceList[avatarres.mFaceIdx]);
-        }
-        else if (type == (int)EPart.EP_Hair)
-        {
-            ChangeEquipUnCombine(ref mHair, avatarres.mHairList[avatarres.mHairIdx]);
-        }
-        else if (type == (int)EPart.EP_Pants)
-        {
-            ChangeEquipUnCombine(ref mPants, avatarres.mPantsList[avatarres.mPantsIdx]);
-        }
-        else if (type == (int)EPart.EP_Shoes)
-        {
-            ChangeEquipUnCombine(ref mShoes, avatarres.mShoesList[avatarres.mShoesIdx]);
-        }
-        else if (type == (int)EPart.EP_Top)
-        {
-            ChangeEquipUnCombine(ref mTop, avatarres.mTopList[avatarres.mTopIdx]);
-        }
+
+        int partIndex = avatarres.selectedIndexs[type];
+        if (parts == null)
+            parts = new GameObject[avatarres.awatarParts.Length];
+
+        ChangeEquipUnCombine(ref parts[type], avatarres.awatarParts[type].parts[partIndex]);
     }
 
     private void ChangeEquipUnCombine(ref GameObject go, GameObject resgo)
@@ -246,7 +206,7 @@ public class Character : MonoBehaviour
         for (int i = 0; i < selfSkin.bones.GetLength(0); ++i)
         {
             GameObject bone = selfSkin.bones[i].gameObject;
-            
+
             // 目标的SkinnedMeshRenderer.bones保存的只是目标mesh相关的骨骼,要获得目标全部骨骼,可以通过查找的方式.
             newBones[i] = FindChildRecursion(target.transform, bone.name);
         }

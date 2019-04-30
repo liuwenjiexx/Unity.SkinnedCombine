@@ -3,17 +3,12 @@ using System.Collections.Generic;
 using UnityEngine;
 using System;
 using System.IO;
+using System.Linq;
 
 public class AvatarRes
 {
     public string mName;
     public GameObject mSkeleton;
-    public List<GameObject> mEyesList = new List<GameObject>();
-    public List<GameObject> mFaceList = new List<GameObject>();
-    public List<GameObject> mHairList = new List<GameObject>();
-    public List<GameObject> mPantsList = new List<GameObject>();
-    public List<GameObject> mShoesList = new List<GameObject>();
-    public List<GameObject> mTopList = new List<GameObject>();
     public List<AnimationClip> mAnimList = new List<AnimationClip>();
 
     public int mEyesIdx = 0;
@@ -23,7 +18,12 @@ public class AvatarRes
     public int mShoesIdx = 0;
     public int mTopIdx = 0;
     public int mAnimIdx = 0;
-    
+
+    public AvatarPartInfo[] awatarParts;
+    public int[] selectedIndexs;
+
+
+
     public void Reset()
     {
         mEyesIdx = 0;
@@ -49,95 +49,11 @@ public class AvatarRes
             mAnimIdx = mAnimList.Count - 1;
     }
 
-    public void AddIndex(int type)
-    {
-        if (type == (int)EPart.EP_Eyes)
-        {
-            mEyesIdx++;
-            if (mEyesIdx >= mEyesList.Count)
-                mEyesIdx = 0;
-        }
-        else if (type == (int)EPart.EP_Face)
-        {
-            mFaceIdx++;
-            if (mFaceIdx >= mFaceList.Count)
-                mFaceIdx = 0;
-        }
-        else if (type == (int)EPart.EP_Hair)
-        {
-            mHairIdx++;
-            if (mHairIdx >= mHairList.Count)
-                mHairIdx = 0;
-        }
-        else if (type == (int)EPart.EP_Pants)
-        {
-            mPantsIdx++;
-            if (mPantsIdx >= mPantsList.Count)
-                mPantsIdx = 0;
-        }
-        else if (type == (int)EPart.EP_Shoes)
-        {
-            mShoesIdx++;
-            if (mShoesIdx >= mShoesList.Count)
-                mShoesIdx = 0;
-        }
-        else if (type == (int)EPart.EP_Top)
-        {
-            mTopIdx++;
-            if (mTopIdx >= mTopList.Count)
-                mTopIdx = 0;
-        }
-    }
-
-    public void ReduceIndex(int type)
-    {
-        if (type == (int)EPart.EP_Eyes)
-        {
-            mEyesIdx--;
-            if (mEyesIdx < 0)
-                mEyesIdx = mEyesList.Count - 1;
-        }
-        else if (type == (int)EPart.EP_Face)
-        {
-            mFaceIdx--;
-            if (mFaceIdx < 0)
-                mFaceIdx = mFaceList.Count - 1;
-        }
-        else if (type == (int)EPart.EP_Hair)
-        {
-            mHairIdx--;
-            if (mHairIdx < 0)
-                mHairIdx = mHairList.Count - 1;
-        }
-        else if (type == (int)EPart.EP_Pants)
-        {
-            mPantsIdx--;
-            if (mPantsIdx < 0)
-                mPantsIdx = mPantsList.Count - 1;
-        }
-        else if (type == (int)EPart.EP_Shoes)
-        {
-            mShoesIdx--;
-            if (mShoesIdx < 0)
-                mShoesIdx = mShoesList.Count - 1;
-        }
-        else if (type == (int)EPart.EP_Top)
-        {
-            mTopIdx--;
-            if (mTopIdx < 0)
-                mTopIdx = mTopList.Count - 1;
-        }
-    }
 }
-
-public enum EPart
+public class AvatarPartInfo
 {
-    EP_Eyes,
-    EP_Face,
-    EP_Hair,
-    EP_Pants,
-    EP_Shoes,
-    EP_Top,
+    public string partName;
+    public GameObject[] parts;
 }
 
 public class Main : MonoBehaviour
@@ -160,12 +76,12 @@ public class Main : MonoBehaviour
 
     #region 变量
 
-    private List<AvatarRes> mAvatarResList = new List<AvatarRes>(); 
+    private List<AvatarRes> mAvatarResList = new List<AvatarRes>();
     private AvatarRes mAvatarRes = null;
     private int mAvatarResIdx = 0;
 
     private Character mCharacter = null;
-
+    [SerializeField]
     private bool mCombine = false;
 
     #endregion
@@ -173,20 +89,24 @@ public class Main : MonoBehaviour
     #region 内置函数
 
     // Use this for initialization
-    void Start ()
+    void Start()
     {
         CreateAllAvatarRes();
         InitCharacter();
     }
-	
-	// Update is called once per frame
-	void Update ()
+
+    // Update is called once per frame
+    void Update()
     {
-		
-	}
+
+    }
+
+    public float uiScale = 1f;
 
     private void OnGUI()
     {
+        GUI.matrix = Matrix4x4.Scale(Vector3.one * uiScale);
+
         GUI.skin.box.fontSize = 50;
         GUI.skin.button.fontSize = 50;
 
@@ -212,12 +132,13 @@ public class Main : MonoBehaviour
         GUILayout.EndHorizontal();
 
         // Buttons for changing character elements.
-        AddCategory((int)EPart.EP_Face, "Head", null);
-        AddCategory((int)EPart.EP_Eyes, "Eyes", null);
-        AddCategory((int)EPart.EP_Hair, "Hair", null);
-        AddCategory((int)EPart.EP_Top, "Body", "item_shirt");
-        AddCategory((int)EPart.EP_Pants, "Legs", "item_pants");
-        AddCategory((int)EPart.EP_Shoes, "Feet", "item_boots");
+
+        for (int i = 0; i < mAvatarRes.awatarParts.Length; i++)
+        {
+            var partInfo = mAvatarRes.awatarParts[i];
+            AddCategory(i, partInfo.partName, null);
+        }
+
 
         // anim
         GUILayout.BeginHorizontal();
@@ -248,8 +169,10 @@ public class Main : MonoBehaviour
 
         if (GUILayout.Button("<", GUILayout.Width(buttonWidth), GUILayout.Height(typeheight)))
         {
-            mAvatarRes.ReduceIndex(parttype);
-
+            //mAvatarRes.ReduceIndex(parttype);
+            int index = --mAvatarRes.selectedIndexs[parttype];
+            index = (index + mAvatarRes.awatarParts[parttype].parts.Length) % mAvatarRes.awatarParts[parttype].parts.Length;
+            mAvatarRes.selectedIndexs[parttype] = index;
             if (!mCombine)
                 mCharacter.ChangeEquipUnCombine(parttype, mAvatarRes);
             else
@@ -260,8 +183,10 @@ public class Main : MonoBehaviour
 
         if (GUILayout.Button(">", GUILayout.Width(buttonWidth), GUILayout.Height(typeheight)))
         {
-            mAvatarRes.AddIndex(parttype);
-
+            //mAvatarRes.AddIndex(parttype);
+            int index = ++mAvatarRes.selectedIndexs[parttype];
+            index = (index + mAvatarRes.awatarParts[parttype].parts.Length) % mAvatarRes.awatarParts[parttype].parts.Length;
+            mAvatarRes.selectedIndexs[parttype] = index;
             if (!mCombine)
                 mCharacter.ChangeEquipUnCombine(parttype, mAvatarRes);
             else
@@ -288,24 +213,33 @@ public class Main : MonoBehaviour
     private void CreateAllAvatarRes()
     {
         DirectoryInfo dir = new DirectoryInfo("Assets/Resources/");
-        foreach(var subdir in dir.GetDirectories())
+        foreach (var subdir in dir.GetDirectories())
         {
             string[] splits = subdir.Name.Split('/');
             string dirname = splits[splits.Length - 1];
 
-            GameObject [] golist = Resources.LoadAll<GameObject>(dirname);
+            GameObject[] golist = Resources.LoadAll<GameObject>(dirname);
 
             AvatarRes avatarres = new AvatarRes();
             mAvatarResList.Add(avatarres);
 
             avatarres.mName = dirname;
+            List<AvatarPartInfo> list = new List<AvatarPartInfo>();
+
+            foreach (var partName in new string[] { EyesName, FaceName, HairName, PantsName, ShoesName, TopName })
+            {
+                list.Add(new AvatarPartInfo()
+                {
+                    partName = partName,
+                    parts = FindRes(golist, partName).ToArray()
+                });
+            }
+
+            avatarres.awatarParts = list.ToArray();
+            avatarres.selectedIndexs = new int[avatarres.awatarParts.Length];
+
             avatarres.mSkeleton = FindRes(golist, SkeletonName)[0];
-            avatarres.mEyesList = FindRes(golist, EyesName);
-            avatarres.mFaceList = FindRes(golist, FaceName);
-            avatarres.mHairList = FindRes(golist, HairName);
-            avatarres.mPantsList = FindRes(golist, PantsName);
-            avatarres.mShoesList = FindRes(golist, ShoesName);
-            avatarres.mTopList = FindRes(golist, TopName);
+             
 
             string animpath = "Assets/Anims/" + dirname + "/";
             List<AnimationClip> clips = FunctionUtil.CollectAll<AnimationClip>(animpath);
@@ -313,7 +247,7 @@ public class Main : MonoBehaviour
         }
     }
 
-    private List<GameObject> FindRes(GameObject []golist, string findname)
+    private List<GameObject> FindRes(GameObject[] golist, string findname)
     {
         List<GameObject> findlist = new List<GameObject>();
         foreach (var go in golist)
