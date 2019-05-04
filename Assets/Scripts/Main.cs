@@ -68,9 +68,9 @@ public class Main : MonoBehaviour
     private const string ShoesName = "shoes";
     private const string TopName = "top";
 
-    private const int typeWidth = 240;
-    private const int typeheight = 100;
-    private const int buttonWidth = 60;
+    private const int typeWidth = 120;
+    private const int typeheight = 25;
+    private const int buttonWidth = 25;
 
     #endregion
 
@@ -83,6 +83,7 @@ public class Main : MonoBehaviour
     private Character mCharacter = null;
     [SerializeField]
     private bool mCombine = false;
+    private SkinnedMeshComposite skinned;
 
     #endregion
 
@@ -107,10 +108,13 @@ public class Main : MonoBehaviour
     {
         GUI.matrix = Matrix4x4.Scale(Vector3.one * uiScale);
 
-        GUI.skin.box.fontSize = 50;
-        GUI.skin.button.fontSize = 50;
-
+   
         GUILayout.BeginArea(new Rect(10, 10, typeWidth + 2 * buttonWidth + 8, 1000));
+
+        if (GUILayout.Toggle(skinned.IsCombine, "Combine") != skinned.IsCombine)
+        {
+            skinned.IsCombine = !skinned.IsCombine;
+        }
 
         // Buttons for changing the active character.
         GUILayout.BeginHorizontal();
@@ -118,7 +122,7 @@ public class Main : MonoBehaviour
         if (GUILayout.Button("<", GUILayout.Width(buttonWidth), GUILayout.Height(typeheight)))
         {
             ReduceAvatarRes();
-            mCharacter.Generate(mAvatarRes, mCombine);
+            ResetSkin(mAvatarRes);
         }
 
         GUILayout.Box("Character", GUILayout.Width(typeWidth), GUILayout.Height(typeheight));
@@ -126,7 +130,7 @@ public class Main : MonoBehaviour
         if (GUILayout.Button(">", GUILayout.Width(buttonWidth), GUILayout.Height(typeheight)))
         {
             AddAvatarRes();
-            mCharacter.Generate(mAvatarRes, mCombine);
+            ResetSkin(mAvatarRes);
         }
 
         GUILayout.EndHorizontal();
@@ -166,31 +170,30 @@ public class Main : MonoBehaviour
     void AddCategory(int parttype, string displayName, string anim)
     {
         GUILayout.BeginHorizontal();
+        int selectedIndex;
+        selectedIndex = mAvatarRes.selectedIndexs[parttype];
+        var part = mAvatarRes.awatarParts[parttype];
 
         if (GUILayout.Button("<", GUILayout.Width(buttonWidth), GUILayout.Height(typeheight)))
         {
-            //mAvatarRes.ReduceIndex(parttype);
-            int index = --mAvatarRes.selectedIndexs[parttype];
-            index = (index + mAvatarRes.awatarParts[parttype].parts.Length) % mAvatarRes.awatarParts[parttype].parts.Length;
-            mAvatarRes.selectedIndexs[parttype] = index;
-            if (!mCombine)
-                mCharacter.ChangeEquipUnCombine(parttype, mAvatarRes);
-            else
-                mCharacter.Generate(mAvatarRes, mCombine);
+            selectedIndex--;
+            selectedIndex = (selectedIndex + part.parts.Length) % part.parts.Length;
+
         }
 
         GUILayout.Box(displayName, GUILayout.Width(typeWidth), GUILayout.Height(typeheight));
 
         if (GUILayout.Button(">", GUILayout.Width(buttonWidth), GUILayout.Height(typeheight)))
         {
-            //mAvatarRes.AddIndex(parttype);
-            int index = ++mAvatarRes.selectedIndexs[parttype];
-            index = (index + mAvatarRes.awatarParts[parttype].parts.Length) % mAvatarRes.awatarParts[parttype].parts.Length;
-            mAvatarRes.selectedIndexs[parttype] = index;
-            if (!mCombine)
-                mCharacter.ChangeEquipUnCombine(parttype, mAvatarRes);
-            else
-                mCharacter.Generate(mAvatarRes, mCombine);
+            selectedIndex++;
+            selectedIndex = (selectedIndex + part.parts.Length) % part.parts.Length;
+
+        }
+
+        if (selectedIndex != mAvatarRes.selectedIndexs[parttype])
+        {
+            mAvatarRes.selectedIndexs[parttype] = selectedIndex;
+            skinned.AddPart(part.partName, part.parts[selectedIndex]);
         }
 
         GUILayout.EndHorizontal();
@@ -207,8 +210,29 @@ public class Main : MonoBehaviour
         mCharacter.SetName("Character");
 
         mAvatarRes = mAvatarResList[mAvatarResIdx];
-        mCharacter.Generate(mAvatarRes, mCombine);
+       
+        skinned = go.AddComponent<SkinnedMeshComposite>();
+        skinned.IsCombine = mCombine;
+        ResetSkin(mAvatarRes);
     }
+
+    void ResetSkin(AvatarRes avatarRes)
+    {
+        mCharacter.GenerateSkeleton(mAvatarRes);
+
+        skinned.SkeletonRoot = mCharacter.mSkeleton.transform;
+
+        skinned.Clear();
+        for (int i = 0; i < avatarRes.awatarParts.Length; i++)
+        {
+            var part = avatarRes.awatarParts[i];
+            int index = avatarRes.selectedIndexs[i];
+            skinned.AddPart(part.partName, part.parts[index]);
+        }
+
+        skinned.GennerateSkin();
+    }
+
 
     private void CreateAllAvatarRes()
     {
@@ -239,7 +263,7 @@ public class Main : MonoBehaviour
             avatarres.selectedIndexs = new int[avatarres.awatarParts.Length];
 
             avatarres.mSkeleton = FindRes(golist, SkeletonName)[0];
-             
+
 
             string animpath = "Assets/Anims/" + dirname + "/";
             List<AnimationClip> clips = FunctionUtil.CollectAll<AnimationClip>(animpath);
@@ -268,6 +292,7 @@ public class Main : MonoBehaviour
             mAvatarResIdx = 0;
 
         mAvatarRes = mAvatarResList[mAvatarResIdx];
+
     }
 
     private void ReduceAvatarRes()
@@ -277,6 +302,7 @@ public class Main : MonoBehaviour
             mAvatarResIdx = mAvatarResList.Count - 1;
 
         mAvatarRes = mAvatarResList[mAvatarResIdx];
+
     }
 
     #endregion
