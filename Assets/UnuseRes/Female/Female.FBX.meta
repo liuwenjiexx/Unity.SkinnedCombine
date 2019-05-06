@@ -1,9 +1,7 @@
 fileFormatVersion: 2
 guid: 8a290a6f228534f4ea9a8022edb98dbf
-timeCreated: 1533655465
-licenseType: Pro
 ModelImporter:
-  serializedVersion: 21
+  serializedVersion: 23
   fileIDToRecycleName:
     100000: eyes
     100002: face-1
@@ -157,6 +155,28 @@ ModelImporter:
     400146: shoes-2
     400148: top-1
     400150: top-2
+    2300000: eyes
+    2300002: face-1
+    2300004: face-2
+    2300006: hair-1
+    2300008: hair-2
+    2300010: pants-1
+    2300012: pants-2
+    2300014: shoes-1
+    2300016: shoes-2
+    2300018: top-1
+    2300020: top-2
+    3300000: eyes
+    3300002: face-1
+    3300004: face-2
+    3300006: hair-1
+    3300008: hair-2
+    3300010: pants-1
+    3300012: pants-2
+    3300014: shoes-1
+    3300016: shoes-2
+    3300018: top-1
+    3300020: top-2
     4300000: pants-1
     4300002: top-1
     4300004: shoes-1
@@ -181,10 +201,13 @@ ModelImporter:
     13700016: shoes-2
     13700018: top-1
     13700020: top-2
+    2186277476908879412: ImportLogs
+  externalObjects: {}
   materials:
     importMaterials: 0
     materialName: 0
     materialSearch: 1
+    materialLocation: 0
   animations:
     legacyGenerateAnimations: 4
     bakeSimulation: 0
@@ -197,6 +220,8 @@ ModelImporter:
     animationImportWarnings: 
     animationRetargetingWarnings: 
     animationDoRetargetingWarnings: 0
+    importAnimatedCustomProperties: 0
+    importConstraints: 0
     animationCompression: 1
     animationRotationError: 0.5
     animationPositionError: 0.5
@@ -211,6 +236,7 @@ ModelImporter:
     globalScale: 1
     meshCompression: 0
     addColliders: 0
+    useSRGBMaterialColor: 1
     importVisibility: 1
     importBlendShapes: 1
     importCameras: 1
@@ -221,16 +247,23 @@ ModelImporter:
     optimizeMeshForGPU: 1
     keepQuads: 0
     weldVertices: 1
+    preserveHierarchy: 0
+    indexFormat: 1
     secondaryUVAngleDistortion: 8
     secondaryUVAreaDistortion: 15.000001
     secondaryUVHardAngle: 88
     secondaryUVPackMargin: 4
     useFileScale: 1
+    previousCalculatedGlobalScale: 1
+    hasPreviousCalculatedGlobalScale: 0
   tangentSpace:
     normalSmoothAngle: 60
     normalImportMode: 0
     tangentImportMode: 3
     normalCalculationMode: 4
+    legacyComputeAllNormalsFromSmoothingGroupsWhenMeshHasBlendShapes: 1
+    blendShapeNormalImportMode: 1
+    normalSmoothingSource: 0
   importAnimation: 1
   copyAvatar: 0
   humanDescription:
@@ -245,7 +278,6 @@ ModelImporter:
     legStretch: 0.05
     feetSpacing: 0
     rootMotionBoneName: 
-    rootMotionBoneRotation: {x: 0, y: 0, z: 0, w: 1}
     hasTranslationDoF: 0
     hasExtraRoot: 1
     skeletonHasParents: 1

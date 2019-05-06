@@ -4,6 +4,8 @@ using UnityEngine;
 using System;
 using System.IO;
 using System.Linq;
+using UnityEditor;
+using System.Text.RegularExpressions;
 
 public class AvatarRes
 {
@@ -60,13 +62,6 @@ public class Main : MonoBehaviour
 {
     #region 常量
 
-    private const string SkeletonName = "skeleton";
-    private const string EyesName = "eyes";
-    private const string FaceName = "face";
-    private const string HairName = "hair";
-    private const string PantsName = "pants";
-    private const string ShoesName = "shoes";
-    private const string TopName = "top";
 
     private const int typeWidth = 120;
     private const int typeheight = 25;
@@ -81,10 +76,10 @@ public class Main : MonoBehaviour
     private int mAvatarResIdx = 0;
 
     private Character mCharacter = null;
-    [SerializeField]
-    private bool mCombine = false;
-    private SkinnedMeshComposite skinned;
 
+    private SkinnedMeshComposite skinned;
+    public EditorSkinnedConfigAsset asset;
+    public float uiScale = 1f;
     #endregion
 
     #region 内置函数
@@ -102,13 +97,12 @@ public class Main : MonoBehaviour
 
     }
 
-    public float uiScale = 1f;
 
     private void OnGUI()
     {
         GUI.matrix = Matrix4x4.Scale(Vector3.one * uiScale);
 
-   
+
         GUILayout.BeginArea(new Rect(10, 10, typeWidth + 2 * buttonWidth + 8, 1000));
 
         if (GUILayout.Toggle(skinned.IsCombine, "Combine") != skinned.IsCombine)
@@ -125,7 +119,7 @@ public class Main : MonoBehaviour
             ResetSkin(mAvatarRes);
         }
 
-        GUILayout.Box("Character", GUILayout.Width(typeWidth), GUILayout.Height(typeheight));
+        GUILayout.Box(mAvatarRes.mName , GUILayout.Width(typeWidth), GUILayout.Height(typeheight));
 
         if (GUILayout.Button(">", GUILayout.Width(buttonWidth), GUILayout.Height(typeheight)))
         {
@@ -153,7 +147,7 @@ public class Main : MonoBehaviour
             mCharacter.ChangeAnim(mAvatarRes);
         }
 
-        GUILayout.Box("Anim", GUILayout.Width(typeWidth), GUILayout.Height(typeheight));
+        GUILayout.Box(mAvatarRes.mAnimList[mAvatarRes.mAnimIdx].name, GUILayout.Width(typeWidth), GUILayout.Height(typeheight));
 
         if (GUILayout.Button(">", GUILayout.Width(buttonWidth), GUILayout.Height(typeheight)))
         {
@@ -210,9 +204,9 @@ public class Main : MonoBehaviour
         mCharacter.SetName("Character");
 
         mAvatarRes = mAvatarResList[mAvatarResIdx];
-       
+
         skinned = go.AddComponent<SkinnedMeshComposite>();
-        skinned.IsCombine = mCombine;
+
         ResetSkin(mAvatarRes);
     }
 
@@ -220,7 +214,8 @@ public class Main : MonoBehaviour
     {
         mCharacter.GenerateSkeleton(mAvatarRes);
 
-        skinned.SkeletonRoot = mCharacter.mSkeleton.transform;
+        skinned.SkeletonRoot = mCharacter.skeletonRoot;
+        skinned.skeletonRootPath = SkinnedMeshComposite.ToRelativePath(mCharacter.mSkeleton.transform, mCharacter.skeletonRoot);
 
         skinned.Clear();
         for (int i = 0; i < avatarRes.awatarParts.Length; i++)
@@ -234,56 +229,81 @@ public class Main : MonoBehaviour
     }
 
 
+
     private void CreateAllAvatarRes()
     {
-        DirectoryInfo dir = new DirectoryInfo("Assets/Resources/");
-        foreach (var subdir in dir.GetDirectories())
-        {
-            string[] splits = subdir.Name.Split('/');
-            string dirname = splits[splits.Length - 1];
+        if (!asset)
+            throw new Exception("config null");
 
-            GameObject[] golist = Resources.LoadAll<GameObject>(dirname);
+        foreach (var avatar in asset.avatars)
+        {
 
             AvatarRes avatarres = new AvatarRes();
-            mAvatarResList.Add(avatarres);
 
-            avatarres.mName = dirname;
-            List<AvatarPartInfo> list = new List<AvatarPartInfo>();
+            avatarres.mName = avatar.name;
 
-            foreach (var partName in new string[] { EyesName, FaceName, HairName, PantsName, ShoesName, TopName })
+            avatarres.mSkeleton = avatar.skeleton;
+            if (avatar.skeleton)
             {
-                list.Add(new AvatarPartInfo()
+                string assetPath = AssetDatabase.GetAssetPath(avatar.skeleton);
+
+                ModelImporter modelImporter = AssetImporter.GetAtPath(assetPath) as ModelImporter;
+                if (modelImporter)
                 {
-                    partName = partName,
-                    parts = FindRes(golist, partName).ToArray()
-                });
+                    avatarres.mAnimList.AddRange(
+                        modelImporter.referencedClips.Select(o => AssetDatabase.LoadAssetAtPath(AssetDatabase.GUIDToAssetPath(o), typeof(AnimationClip)))
+                        .Select(o => (AnimationClip)o)
+                        .ToArray());
+
+                }
+                else
+                {
+                    var anim = avatar.skeleton.GetComponentInChildren<Animation>();
+                    if (anim)
+                    {
+                        foreach (AnimationState animationState in anim)
+                        {
+                            avatarres.mAnimList.Add(animationState.clip);
+                        }
+                    }
+                }
             }
 
-            avatarres.awatarParts = list.ToArray();
-            avatarres.selectedIndexs = new int[avatarres.awatarParts.Length];
-
-            avatarres.mSkeleton = FindRes(golist, SkeletonName)[0];
-
-
-            string animpath = "Assets/Anims/" + dirname + "/";
-            List<AnimationClip> clips = FunctionUtil.CollectAll<AnimationClip>(animpath);
-            avatarres.mAnimList.AddRange(clips);
-        }
-    }
-
-    private List<GameObject> FindRes(GameObject[] golist, string findname)
-    {
-        List<GameObject> findlist = new List<GameObject>();
-        foreach (var go in golist)
-        {
-            if (go.name.Contains(findname))
+            List<AvatarPartInfo> parts = new List<AvatarPartInfo>();
+            foreach (var partConfig in avatar.parts)
             {
-                findlist.Add(go);
+                var part = new AvatarPartInfo();
+                part.partName = partConfig.partName;
+                if (!string.IsNullOrEmpty(partConfig.file))
+                {
+                    Regex fileRegex = new Regex(partConfig.file);
+                    string dir = !string.IsNullOrEmpty(partConfig.directory) ? partConfig.directory : avatar.directory;
+                    if (!string.IsNullOrEmpty(dir))
+                    {
+                        List<GameObject> list = new List<GameObject>();
+                        foreach (string guid in AssetDatabase.FindAssets("t:Prefab", new string[] { dir }))
+                        {
+                            string assetPath = AssetDatabase.GUIDToAssetPath(guid);
+                            if (!fileRegex.IsMatch(assetPath))
+                                continue;
+                            GameObject go = AssetDatabase.LoadAssetAtPath<GameObject>(assetPath);
+                            list.Add(go);
+                        }
+                        part.parts = list.ToArray();
+                    }
+                }
+                if (part.parts == null)
+                    part.parts = new GameObject[0];
+                parts.Add(part);
             }
+            avatarres.awatarParts = parts.ToArray();
+            avatarres.selectedIndexs = new int[avatarres.awatarParts.Length];
+            mAvatarResList.Add(avatarres);
         }
 
-        return findlist;
+
     }
+     
 
     private void AddAvatarRes()
     {

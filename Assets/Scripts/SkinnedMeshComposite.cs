@@ -12,6 +12,7 @@ public class SkinnedMeshComposite : MonoBehaviour
     private Dictionary<string, GameObject> instanceParts;
     [SerializeField]
     private Transform skeletonRoot;
+    public string skeletonRootPath;
     [SerializeField]
     private bool isCombine;
 
@@ -74,7 +75,7 @@ public class SkinnedMeshComposite : MonoBehaviour
     public void GennerateSkin()
     {
         isDried = false;
-         
+
         if (isCombine)
         {
 
@@ -121,6 +122,13 @@ public class SkinnedMeshComposite : MonoBehaviour
                     foreach (var smr in go.GetComponentsInChildren<SkinnedMeshRenderer>())
                     {
                         ShareSkeleton(smr);
+                    }
+
+                    if (!string.IsNullOrEmpty(skeletonRootPath))
+                    {
+                        var t = go.transform.Find(skeletonRootPath);
+                        if (t)
+                            DestroyImmediate(t.gameObject);
                     }
 
                     instanceParts[part.partName.ToLower()] = go;
@@ -317,7 +325,31 @@ public class SkinnedMeshComposite : MonoBehaviour
         return result;
     }
 
+    public static string ToRelativePath(Transform root, Transform relative)
+    {
+        if (root == relative)
+            return string.Empty;
 
+        string path = "";
+        Transform current = relative;
+        bool first = true;
+        while (current && current != root)
+        {
+            if (first)
+            {
+                first = false;
+            }
+            else
+            {
+                path += "/";
+            }
+            path += current.name;
+            current = current.parent;
+        }
+        if (current && current != root)
+            throw new Exception("error");
+        return path;
+    }
 
     class SkinnedPart
     {
