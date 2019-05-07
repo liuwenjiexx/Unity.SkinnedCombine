@@ -75,7 +75,7 @@ public class SkinnedMeshComposite : MonoBehaviour
     public void GennerateSkin()
     {
         isDried = false;
-
+        
         if (isCombine)
         {
 
@@ -83,6 +83,11 @@ public class SkinnedMeshComposite : MonoBehaviour
         }
         else
         {
+            if (combineSkinned)
+            {
+                DestroyImmediate(combineSkinned);
+                combineSkinned = null;
+            }
             GennerateUncombineSkin();
         }
         lastGennerateCombine = isCombine;
@@ -102,11 +107,7 @@ public class SkinnedMeshComposite : MonoBehaviour
             }
         }
 
-        if (!combineSkinned)
-        {
-            DestroyImmediate(combineSkinned);
-            combineSkinned = null;
-        }
+  
 
         for (int i = 0; i < parts.Count; i++)
         {
@@ -207,8 +208,10 @@ public class SkinnedMeshComposite : MonoBehaviour
         }
 
 
-        SkinnedMeshRenderer r = GetComponent<SkinnedMeshRenderer>();
-        if (!r)
+        SkinnedMeshRenderer r;
+        r = combineSkinned;
+        //r= GetComponent<SkinnedMeshRenderer>();
+        if (!combineSkinned)
         {
             r = gameObject.AddComponent<SkinnedMeshRenderer>();
             combineSkinned = r;
