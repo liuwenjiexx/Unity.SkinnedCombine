@@ -1,4 +1,7 @@
-﻿using System.Collections;
+﻿#if UNITY_EDITOR
+
+
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using System;
@@ -12,34 +15,35 @@ namespace SkinnedPreview
 
     public class SkinnedPreview : MonoBehaviour
     {
-        #region 常量
+#region 常量
 
 
         private const int typeWidth = 120;
         private const int typeheight = 25;
         private const int buttonWidth = 25;
 
-        #endregion
+#endregion
 
-        #region 变量
+#region 变量
         private GameObject goAvatar;
         private GameObject skeleton;
         private Transform skeletonRoot;
-        private Animation mAnim;
+
 
         private List<AvatarRes> avatars = new List<AvatarRes>();
         private AvatarRes avatarConfig = null;
         private int selectedAvatarIndex = 0;
 
 
-        private SkinnedMeshComposite skinned;
+        private SkinnedComposite skinned;
         public SkinnedPreviewAsset config;
-
+        public bool combine = true;
 
         public float uiScale = 1f;
-        #endregion
 
-        #region 内置函数
+#endregion
+
+#region 内置函数
 
         // Use this for initialization
         void Start()
@@ -56,104 +60,133 @@ namespace SkinnedPreview
         // Update is called once per frame
         void Update()
         {
-            Debug.Log(Time.deltaTime);
+            if (goAvatar)
+            {
+                if (Input.GetMouseButtonDown(0))
+                {
+                    StartCoroutine(StartDrag());
+                }
+            }
+
+
+
         }
 
+        IEnumerator StartDrag()
+        {
+            Vector3 lastPos = Input.mousePosition;
+
+            while (Input.GetMouseButton(0))
+            {
+                Vector3 delta = (Input.mousePosition - lastPos);
+                lastPos = Input.mousePosition;
+
+                var rot = goAvatar.transform.localRotation * Quaternion.Euler(0, -delta.x, 0);
+                goAvatar.transform.localRotation = rot;
+
+                yield return null;
+            }
+        }
 
         private void OnGUI()
         {
             GUI.matrix = Matrix4x4.Scale(Vector3.one * uiScale);
 
-
-            GUILayout.BeginArea(new Rect(10, 10, typeWidth + 2 * buttonWidth + 8, 1000));
-
-            if (GUILayout.Toggle(skinned.IsCombine, "Combine") != skinned.IsCombine)
+            using (new GUILayout.AreaScope(new Rect(10, 10, typeWidth + 2 * buttonWidth + 8, 1000)))
             {
-                skinned.IsCombine = !skinned.IsCombine;
+
+
+                if (GUILayout.Toggle(skinned.IsCombine, "Combine") != skinned.IsCombine)
+                {
+                    skinned.IsCombine = !skinned.IsCombine;
+                }
+
+                // Buttons for changing the active character.
+                using (new GUILayout.HorizontalScope())
+                {
+
+                    if (GUILayout.Button("<", GUILayout.Width(buttonWidth), GUILayout.Height(typeheight)))
+                    {
+                        SelectAvatar(selectedAvatarIndex - 1);
+                    }
+
+                    GUILayout.Box(avatarConfig.name, GUILayout.Width(typeWidth), GUILayout.Height(typeheight));
+
+                    if (GUILayout.Button(">", GUILayout.Width(buttonWidth), GUILayout.Height(typeheight)))
+                    {
+                        SelectAvatar(selectedAvatarIndex + 1);
+                    }
+
+                }
+
+                // Buttons for changing character elements.
+
+                for (int i = 0; i < avatarConfig.awatarParts.Length; i++)
+                {
+                    var partInfo = avatarConfig.awatarParts[i];
+                    AddCategory(i, partInfo.partName, null);
+                }
+
+
+                if (avatarConfig.animationNames.Count > 0)
+                {
+                    // anim
+                    using (new GUILayout.HorizontalScope())
+                    {
+                        if (GUILayout.Button("<", GUILayout.Width(buttonWidth), GUILayout.Height(typeheight)))
+                        {
+                            SelectAnimation(avatarConfig.selectedAnimationIndex - 1);
+                        }
+
+                        GUILayout.Box(avatarConfig.animations[avatarConfig.selectedAnimationIndex].name, GUILayout.Width(typeWidth), GUILayout.Height(typeheight));
+
+                        if (GUILayout.Button(">", GUILayout.Width(buttonWidth), GUILayout.Height(typeheight)))
+                        {
+                            SelectAnimation(avatarConfig.selectedAnimationIndex + 1);
+                        }
+                    }
+                }
+
+
             }
-
-            // Buttons for changing the active character.
-            GUILayout.BeginHorizontal();
-
-            if (GUILayout.Button("<", GUILayout.Width(buttonWidth), GUILayout.Height(typeheight)))
-            {
-                SelectAvatar(selectedAvatarIndex - 1);
-            }
-
-            GUILayout.Box(avatarConfig.name, GUILayout.Width(typeWidth), GUILayout.Height(typeheight));
-
-            if (GUILayout.Button(">", GUILayout.Width(buttonWidth), GUILayout.Height(typeheight)))
-            {
-                SelectAvatar(selectedAvatarIndex + 1);
-            }
-
-            GUILayout.EndHorizontal();
-
-            // Buttons for changing character elements.
-
-            for (int i = 0; i < avatarConfig.awatarParts.Length; i++)
-            {
-                var partInfo = avatarConfig.awatarParts[i];
-                AddCategory(i, partInfo.partName, null);
-            }
-
-
-            // anim
-            GUILayout.BeginHorizontal();
-
-            if (GUILayout.Button("<", GUILayout.Width(buttonWidth), GUILayout.Height(typeheight)))
-            {
-                SelectAnimation(avatarConfig.selectedAnimationIndex - 1);
-            }
-
-            GUILayout.Box(avatarConfig.animations[avatarConfig.selectedAnimationIndex].name, GUILayout.Width(typeWidth), GUILayout.Height(typeheight));
-
-            if (GUILayout.Button(">", GUILayout.Width(buttonWidth), GUILayout.Height(typeheight)))
-            {
-                SelectAnimation(avatarConfig.selectedAnimationIndex + 1);
-            }
-
-            GUILayout.EndHorizontal();
-
-            GUILayout.EndArea();
         }
 
         // Draws buttons for configuring a specific category of items, like pants or shoes.
         void AddCategory(int parttype, string displayName, string anim)
         {
-            GUILayout.BeginHorizontal();
-            int selectedIndex;
-            selectedIndex = avatarConfig.selectedIndexs[parttype];
-            var part = avatarConfig.awatarParts[parttype];
-
-            if (GUILayout.Button("<", GUILayout.Width(buttonWidth), GUILayout.Height(typeheight)))
+            using (new GUILayout.HorizontalScope())
             {
-                selectedIndex--;
-                selectedIndex = (selectedIndex + part.parts.Length) % part.parts.Length;
+                int selectedIndex;
+                selectedIndex = avatarConfig.selectedIndexs[parttype];
+                var part = avatarConfig.awatarParts[parttype];
+
+                if (GUILayout.Button("<", GUILayout.Width(buttonWidth), GUILayout.Height(typeheight)))
+                {
+                    selectedIndex--;
+                    selectedIndex = (selectedIndex + part.parts.Length) % part.parts.Length;
+                }
+
+                GUILayout.Box(displayName + "(" + (part.parts.Length > 0 ? part.partNames[selectedIndex] : "") + ")", GUILayout.Width(typeWidth), GUILayout.Height(typeheight));
+
+                if (GUILayout.Button(">", GUILayout.Width(buttonWidth), GUILayout.Height(typeheight)))
+                {
+                    selectedIndex++;
+                    selectedIndex = (selectedIndex + part.parts.Length) % part.parts.Length;
+
+                }
+
+                if (selectedIndex != avatarConfig.selectedIndexs[parttype])
+                {
+                    avatarConfig.selectedIndexs[parttype] = selectedIndex;
+                    skinned.AddPart(part.partName, part.parts[selectedIndex]);
+                }
 
             }
-
-            GUILayout.Box(displayName, GUILayout.Width(typeWidth), GUILayout.Height(typeheight));
-
-            if (GUILayout.Button(">", GUILayout.Width(buttonWidth), GUILayout.Height(typeheight)))
-            {
-                selectedIndex++;
-                selectedIndex = (selectedIndex + part.parts.Length) % part.parts.Length;
-
-            }
-
-            if (selectedIndex != avatarConfig.selectedIndexs[parttype])
-            {
-                avatarConfig.selectedIndexs[parttype] = selectedIndex;
-                skinned.AddPart(part.partName, part.parts[selectedIndex]);
-            }
-
-            GUILayout.EndHorizontal();
         }
 
-        #endregion
+#endregion
 
-        #region 函数
+#region 函数
 
         private void InitCharacter()
         {
@@ -162,7 +195,7 @@ namespace SkinnedPreview
             goAvatar = go;
             avatarConfig = avatars[selectedAvatarIndex];
 
-            skinned = go.AddComponent<SkinnedMeshComposite>();
+            skinned = go.AddComponent<SkinnedComposite>();
 
             ResetSkin();
         }
@@ -177,43 +210,54 @@ namespace SkinnedPreview
 
             skeleton.transform.position = Vector3.zero;
             skeleton.transform.rotation = Quaternion.identity;
-            skeleton.transform.localScale = Vector3.one;
+            skeleton.transform.localScale = Vector3.one * avatarConfig.config.scale;
             skeleton.name = avatarConfig.skeleton.name;
-            foreach (Transform child in skeleton.transform)
-            {
-                if (child.name.IndexOf("hips", System.StringComparison.InvariantCultureIgnoreCase) >= 0)
-                {
-                    skeletonRoot = child;
-                    break;
-                }
-            }
+            skeletonRoot = skeleton.transform.Find(avatarConfig.config.skeletonRootPath);
+
+
 
             if (skeleton.GetComponent<Animator>())
             {
-                DestroyImmediate(skeleton.GetComponent<Animator>());
+                //DestroyImmediate(skeleton.GetComponent<Animator>());
+                var animator = skeleton.GetComponent<Animator>();
+                var ctrl = animator.runtimeAnimatorController;
+                if (ctrl)
+                {
+                    var clips = ctrl.animationClips;
+                    avatarConfig.animations.Clear();
+                    avatarConfig.animationNames.Clear();
+                    avatarConfig.animations.AddRange(clips);
+                    avatarConfig.animationNames.AddRange( clips.Select(o => o.name));
+                }
             }
-            if (skeleton.GetComponent<Animation>())
+            else
             {
-                DestroyImmediate(skeleton.GetComponent<Animation>());
-            }
+                if (skeleton.GetComponent<Animation>())
+                {
+                    DestroyImmediate(skeleton.GetComponent<Animation>());
+                }
 
-            mAnim = skeleton.AddComponent<Animation>();
-            foreach (var anim in avatarConfig.animations)
-            {
-                mAnim.AddClip(anim, anim.name);
+                var mAnim = skeleton.AddComponent<Animation>();
+                foreach (var anim in avatarConfig.animations)
+                {
+                    mAnim.AddClip(anim, anim.name);
+                }
+                ChangeAnim();
+
             }
-            ChangeAnim();
 
             StartCoroutine(Delay());
 
             skinned.SkeletonRoot = skeletonRoot;
-            skinned.skeletonRootPath = SkinnedMeshComposite.ToRelativePath(skeleton.transform, skeletonRoot);
-
+            skinned.skeletonRootPath = avatarConfig.config.skeletonRootPath;
+            skinned.IsCombine = combine;
             skinned.Clear();
             for (int i = 0; i < avatarConfig.awatarParts.Length; i++)
             {
                 var part = avatarConfig.awatarParts[i];
                 int index = avatarConfig.selectedIndexs[i];
+                if (!(0 <= index && index < avatarConfig.selectedIndexs.Length))
+                    continue;
                 skinned.AddPart(part.partName, part.parts[index]);
             }
 
@@ -239,13 +283,23 @@ namespace SkinnedPreview
 
         public void ChangeAnim()
         {
-            if (mAnim == null)
-                return;
+            string animName = avatarConfig.animationNames[avatarConfig.selectedAnimationIndex];
 
-            AnimationClip animclip = avatarConfig.animations[avatarConfig.selectedAnimationIndex];
-            mAnim.wrapMode = WrapMode.Loop;
-            mAnim.Stop();
-            mAnim.Play(animclip.name);
+            var animation = skeleton.GetComponent<Animation>();
+            if (animation != null)
+            {
+                animation.wrapMode = WrapMode.Loop;
+                animation.Stop();
+                animation.Play(animName);
+            }
+            else
+            {
+                var animator = skeleton.GetComponent<Animator>();
+                if (animator)
+                {
+                    animator.Play(animName);
+                }
+            }
         }
 
 
@@ -258,32 +312,8 @@ namespace SkinnedPreview
                 AvatarRes avatarres = new AvatarRes();
 
                 avatarres.name = avatar.name;
-
                 avatarres.skeleton = avatar.skeleton;
-                //if (avatar.skeleton)
-                //{
-                //string assetPath = AssetDatabase.GetAssetPath(avatar.skeleton);
-                //ModelImporter modelImporter = AssetImporter.GetAtPath(assetPath) as ModelImporter;
-                //if (modelImporter)
-                //{
-                //    avatarres.mAnimList.AddRange(
-                //        modelImporter.referencedClips.Select(o => AssetDatabase.LoadAssetAtPath(AssetDatabase.GUIDToAssetPath(o), typeof(AnimationClip)))
-                //        .Select(o => (AnimationClip)o)
-                //        .ToArray());
-
-                //}
-                //else
-                //{
-                //    var anim = avatar.skeleton.GetComponentInChildren<Animation>();
-                //    if (anim)
-                //    {
-                //        foreach (AnimationState animationState in anim)
-                //        {
-                //            avatarres.mAnimList.Add(animationState.clip);
-                //        }
-                //    }
-                //}
-                //}
+                avatarres.config = avatar;
 
                 string dir = avatar.animationDirectory;
                 if (string.IsNullOrEmpty(dir))
@@ -296,10 +326,20 @@ namespace SkinnedPreview
                     foreach (var clip in FindAssets<AnimationClip>("t:AnimationClip", new string[] { dir }))
                     {
                         string assetPath = AssetDatabase.GetAssetPath(clip);
+                        var modelImporter = AssetImporter.GetAtPath(assetPath) as ModelImporter;
+                        if (modelImporter)
+                        {
+                            if (modelImporter.animationType != ModelImporterAnimationType.Legacy)
+                            {
+                                continue;
+                            }
+                        }
+
                         Match m = regex.Match(assetPath);
                         if (m.Success)
                         {
                             avatarres.animations.Add(clip);
+                            avatarres.animationNames.Add(clip.name);
                         }
                     }
                 }
@@ -332,15 +372,23 @@ namespace SkinnedPreview
                         if (!string.IsNullOrEmpty(dir))
                         {
                             List<GameObject> list = new List<GameObject>();
-                            foreach (string guid in AssetDatabase.FindAssets("t:Prefab", new string[] { dir }))
+                            List<string> nameList = new List<string>();
+                            foreach (string guid in AssetDatabase.FindAssets("t:Prefab t:Model", new string[] { dir }))
                             {
                                 string assetPath = AssetDatabase.GUIDToAssetPath(guid);
-                                if (!fileRegex.IsMatch(assetPath))
+                                var m = fileRegex.Match(assetPath);
+                                if (!m.Success)
                                     continue;
                                 GameObject go = AssetDatabase.LoadAssetAtPath<GameObject>(assetPath);
+                                if (m.Groups.Count > 1)
+                                    nameList.Add(m.Groups[1].Value);
+                                else
+                                    nameList.Add(go.name);
+
                                 list.Add(go);
                             }
                             part.parts = list.ToArray();
+                            part.partNames = nameList.ToArray();
                         }
                     }
                     if (part.parts == null)
@@ -421,7 +469,7 @@ namespace SkinnedPreview
 
         void SelectAnimation(int animationIndex)
         {
-            animationIndex = (animationIndex + avatars.Count) % avatars.Count;
+            animationIndex = (animationIndex + avatarConfig.animationNames.Count) % avatarConfig.animationNames.Count;
             if (animationIndex != avatarConfig.selectedAnimationIndex)
             {
                 avatarConfig.selectedAnimationIndex = animationIndex;
@@ -431,7 +479,7 @@ namespace SkinnedPreview
 
 
 
-        #endregion
+#endregion
     }
 
 
@@ -441,7 +489,8 @@ namespace SkinnedPreview
         public string name;
         public GameObject skeleton;
         public List<AnimationClip> animations = new List<AnimationClip>();
-
+        public List<string> animationNames = new List<string>();
+        public SkinnedPreviewAsset.AvatarConfig config;
 
         public int selectedAnimationIndex = 0;
 
@@ -454,5 +503,9 @@ namespace SkinnedPreview
     {
         public string partName;
         public GameObject[] parts;
+        public string[] partNames;
     }
 }
+
+#endif
+

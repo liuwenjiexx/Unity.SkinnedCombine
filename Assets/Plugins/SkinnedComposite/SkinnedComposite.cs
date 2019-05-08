@@ -5,7 +5,7 @@ using UnityEngine;
 using System.Linq;
 
 
-public class SkinnedMeshComposite : MonoBehaviour
+public class SkinnedComposite : MonoBehaviour
 {
 
     private List<SkinnedPart> parts;
@@ -68,7 +68,6 @@ public class SkinnedMeshComposite : MonoBehaviour
 
     private void Update()
     {
-        Debug.Log(Time.deltaTime);
         if (isDried)
             GennerateSkin();
     }

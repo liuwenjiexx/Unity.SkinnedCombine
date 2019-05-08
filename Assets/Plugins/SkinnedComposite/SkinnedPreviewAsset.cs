@@ -16,6 +16,8 @@ namespace SkinnedPreview
         {
             public string name;
             public GameObject skeleton;
+            public string skeletonRootPath;
+            public float scale=1f;
 
             public string baseDirectory;
 
