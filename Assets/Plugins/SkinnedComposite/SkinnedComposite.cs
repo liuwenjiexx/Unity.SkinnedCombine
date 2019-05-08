@@ -68,6 +68,7 @@ public class SkinnedMeshComposite : MonoBehaviour
 
     private void Update()
     {
+        Debug.Log(Time.deltaTime);
         if (isDried)
             GennerateSkin();
     }
