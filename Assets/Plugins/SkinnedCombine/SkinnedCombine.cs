@@ -5,46 +5,18 @@ using UnityEngine;
 using System.Linq;
 
 
-public class SkinnedComposite : MonoBehaviour
+public class SkinnedCombine : MonoBehaviour
 {
-
     private List<SkinnedPart> parts;
     private Dictionary<string, GameObject> instanceParts;
-    [SerializeField]
-    private Transform skeletonRoot;
-    public string skeletonRootPath;
-    [SerializeField]
-    private bool isCombine;
-
     private bool isDried;
     private bool lastGennerateCombine;
-    private Transform lastSkeletonRoot;
+
     private SkinnedMeshRenderer combineSkinned;
 
     public IEnumerable<string> Parts { get { return parts.Select(o => o.partName); } }
     private Dictionary<string, Transform> cachedSkeletons;
 
-    public bool IsCombine
-    {
-        get { return isCombine; }
-        set
-        {
-            if (isCombine != value)
-            {
-                isCombine = value;
-                isDried = true;
-            }
-        }
-    }
-
-    public Transform SkeletonRoot
-    {
-        get { return skeletonRoot; }
-        set
-        {
-            skeletonRoot = value;
-        }
-    }
 
     void Awake()
     {
@@ -52,9 +24,6 @@ public class SkinnedComposite : MonoBehaviour
             parts = new List<SkinnedPart>();
         instanceParts = new Dictionary<string, GameObject>(StringComparer.InvariantCultureIgnoreCase);
         cachedSkeletons = new Dictionary<string, Transform>();
-
-        if (!skeletonRoot)
-            skeletonRoot = transform;
 
     }
 
@@ -75,22 +44,11 @@ public class SkinnedComposite : MonoBehaviour
     public void GennerateSkin()
     {
         isDried = false;
-        
-        if (isCombine)
-        {
 
-            GenerateCombineSkin();
-        }
-        else
-        {
-            if (combineSkinned)
-            {
-                DestroyImmediate(combineSkinned);
-                combineSkinned = null;
-            }
-            GennerateUncombineSkin();
-        }
-        lastGennerateCombine = isCombine;
+        GenerateCombineSkin();
+
+        GennerateUncombineSkin();
+
     }
 
     void GennerateUncombineSkin()
@@ -107,11 +65,14 @@ public class SkinnedComposite : MonoBehaviour
             }
         }
 
-  
+
 
         for (int i = 0; i < parts.Count; i++)
         {
             var part = parts[i];
+            if (part.combine)
+                continue;
+
             if (!instanceParts.ContainsKey(part.partName))
             {
                 if (part.prefab)
@@ -123,13 +84,6 @@ public class SkinnedComposite : MonoBehaviour
                     foreach (var smr in go.GetComponentsInChildren<SkinnedMeshRenderer>())
                     {
                         ShareSkeleton(smr);
-                    }
-
-                    if (!string.IsNullOrEmpty(skeletonRootPath))
-                    {
-                        var t = go.transform.Find(skeletonRootPath);
-                        if (t)
-                            DestroyImmediate(t.gameObject);
                     }
 
                     instanceParts[part.partName.ToLower()] = go;
@@ -162,17 +116,6 @@ public class SkinnedComposite : MonoBehaviour
     void GenerateCombineSkin()
     {
 
-        if (instanceParts.Count > 0)
-        {
-            foreach (var item in instanceParts)
-            {
-                GameObject instance = item.Value;
-                if (instance)
-                    DestroyImmediate(instance);
-            }
-            instanceParts.Clear();
-
-        }
 
         List<CombineInstance> combineInstances = new List<CombineInstance>();
         List<Material> materials = new List<Material>();
@@ -181,6 +124,9 @@ public class SkinnedComposite : MonoBehaviour
         for (int i = 0; i < parts.Count; i++)
         {
             var part = parts[i];
+            if (!part.combine)
+                continue;
+
             GameObject go = GameObject.Instantiate(part.prefab);
 
             foreach (SkinnedMeshRenderer smr in go.GetComponentsInChildren<SkinnedMeshRenderer>())
@@ -209,12 +155,10 @@ public class SkinnedComposite : MonoBehaviour
 
 
         SkinnedMeshRenderer r;
-        r = combineSkinned;
-        //r= GetComponent<SkinnedMeshRenderer>();
-        if (!combineSkinned)
+        r = GetComponent<SkinnedMeshRenderer>();
+        if (!r)
         {
             r = gameObject.AddComponent<SkinnedMeshRenderer>();
-            combineSkinned = r;
         }
 
         var newMesh = new Mesh();
@@ -225,7 +169,7 @@ public class SkinnedComposite : MonoBehaviour
 
     }
 
-    public void AddPart(string partName, GameObject prefab)
+    public void AddPart(string partName, GameObject prefab, bool combine = true)
     {
 
         int index = FindPartIndex(partName);
@@ -238,7 +182,8 @@ public class SkinnedComposite : MonoBehaviour
         var part = new SkinnedPart()
         {
             partName = partName,
-            prefab = prefab
+            prefab = prefab,
+            combine = combine,
         };
         parts.Add(part);
         isDried = true;
@@ -289,17 +234,12 @@ public class SkinnedComposite : MonoBehaviour
 
     Transform FindSkeleton(string name)
     {
-        if (lastSkeletonRoot != skeletonRoot)
+        if (cachedSkeletons.Count == 0)
         {
-            cachedSkeletons.Clear();
-            if (skeletonRoot)
+            foreach (var t in transform.GetComponentsInChildren<Transform>())
             {
-                foreach (var t in skeletonRoot.GetComponentsInChildren<Transform>())
-                {
-                    cachedSkeletons[t.name] = t;
-                }
+                cachedSkeletons[t.name] = t;
             }
-            lastSkeletonRoot = skeletonRoot;
         }
         Transform find;
         if (!cachedSkeletons.TryGetValue(name, out find))
@@ -358,6 +298,8 @@ public class SkinnedComposite : MonoBehaviour
     {
         public string partName;
         public GameObject prefab;
+        public bool combine;
+
         public override bool Equals(object obj)
         {
             var part = obj as SkinnedPart;

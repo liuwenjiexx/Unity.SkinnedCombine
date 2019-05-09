@@ -15,16 +15,16 @@ namespace SkinnedPreview
 
     public class SkinnedPreview : MonoBehaviour
     {
-#region 常量
+        #region 常量
 
 
         private const int typeWidth = 120;
         private const int typeheight = 25;
         private const int buttonWidth = 25;
 
-#endregion
+        #endregion
 
-#region 变量
+        #region 变量
         private GameObject goAvatar;
         private GameObject skeleton;
         private Transform skeletonRoot;
@@ -35,15 +35,15 @@ namespace SkinnedPreview
         private int selectedAvatarIndex = 0;
 
 
-        private SkinnedComposite skinned;
+        private SkinnedCombine skinned;
         public SkinnedPreviewAsset config;
         public bool combine = true;
 
         public float uiScale = 1f;
 
-#endregion
+        #endregion
 
-#region 内置函数
+        #region 内置函数
 
         // Use this for initialization
         void Start()
@@ -96,9 +96,10 @@ namespace SkinnedPreview
             {
 
 
-                if (GUILayout.Toggle(skinned.IsCombine, "Combine") != skinned.IsCombine)
+                if (GUILayout.Toggle(combine, "Combine") != combine)
                 {
-                    skinned.IsCombine = !skinned.IsCombine;
+                    //skinned.IsCombine = !skinned.IsCombine;
+                    combine = !combine;
                 }
 
                 // Buttons for changing the active character.
@@ -178,15 +179,15 @@ namespace SkinnedPreview
                 if (selectedIndex != avatarConfig.selectedIndexs[parttype])
                 {
                     avatarConfig.selectedIndexs[parttype] = selectedIndex;
-                    skinned.AddPart(part.partName, part.parts[selectedIndex]);
+                    skinned.AddPart(part.partName, part.parts[selectedIndex], combine);
                 }
 
             }
         }
 
-#endregion
+        #endregion
 
-#region 函数
+        #region 函数
 
         private void InitCharacter()
         {
@@ -195,7 +196,7 @@ namespace SkinnedPreview
             goAvatar = go;
             avatarConfig = avatars[selectedAvatarIndex];
 
-            skinned = go.AddComponent<SkinnedComposite>();
+        
 
             ResetSkin();
         }
@@ -214,7 +215,7 @@ namespace SkinnedPreview
             skeleton.name = avatarConfig.skeleton.name;
             skeletonRoot = skeleton.transform.Find(avatarConfig.config.skeletonRootPath);
 
-
+            skinned = skeleton.AddComponent<SkinnedCombine>();
 
             if (skeleton.GetComponent<Animator>())
             {
@@ -227,7 +228,7 @@ namespace SkinnedPreview
                     avatarConfig.animations.Clear();
                     avatarConfig.animationNames.Clear();
                     avatarConfig.animations.AddRange(clips);
-                    avatarConfig.animationNames.AddRange( clips.Select(o => o.name));
+                    avatarConfig.animationNames.AddRange(clips.Select(o => o.name));
                 }
             }
             else
@@ -248,9 +249,9 @@ namespace SkinnedPreview
 
             StartCoroutine(Delay());
 
-            skinned.SkeletonRoot = skeletonRoot;
-            skinned.skeletonRootPath = avatarConfig.config.skeletonRootPath;
-            skinned.IsCombine = combine;
+            //skinned.SkeletonRoot = skeletonRoot;
+            //skinned.skeletonRootPath = avatarConfig.config.skeletonRootPath;
+            //skinned.IsCombine = combine;
             skinned.Clear();
             for (int i = 0; i < avatarConfig.awatarParts.Length; i++)
             {
@@ -258,7 +259,7 @@ namespace SkinnedPreview
                 int index = avatarConfig.selectedIndexs[i];
                 if (!(0 <= index && index < avatarConfig.selectedIndexs.Length))
                     continue;
-                skinned.AddPart(part.partName, part.parts[index]);
+                skinned.AddPart(part.partName, part.parts[index], combine);
             }
 
             skinned.GennerateSkin();
@@ -479,7 +480,7 @@ namespace SkinnedPreview
 
 
 
-#endregion
+        #endregion
     }
 
 
