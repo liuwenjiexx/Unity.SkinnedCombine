@@ -6,7 +6,7 @@ using UnityEngine;
 namespace SkinnedPreview
 {
 
-    [CreateAssetMenu(fileName = "SkinnedPreview.asset", menuName = "Skinned Preview")]
+    [CreateAssetMenu(fileName = "SkinnedPreview.asset", menuName = "Preview/Skinned Preview")]
     public class SkinnedPreviewAsset : ScriptableObject
     {
         public Color ambientColor = new Color(0.5f, 0.5f, 0.5f);
