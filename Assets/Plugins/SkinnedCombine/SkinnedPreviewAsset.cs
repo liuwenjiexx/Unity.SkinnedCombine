@@ -19,16 +19,9 @@ namespace SkinnedPreview
         {
             public string name;
             public GameObject skeleton;
-            public string skeletonRootPath;
-            public float scale=1f;
-
-            public string baseDirectory;
-
-            public string animationDirectory;
-            public string animationNamePattern;
-
+            public RuntimeAnimatorController animator; 
+            public string baseDirectory;             
             public string defaultAnimation;
-
             public string partDirectory;
             public SkinnedPart[] parts;
 

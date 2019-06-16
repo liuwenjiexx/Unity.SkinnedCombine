@@ -15,13 +15,13 @@ namespace SkinnedPreview
 
     public class SkinnedPreview : MonoBehaviour
     {
- 
+
 
         private const int typeWidth = 120;
         private const int typeheight = 25;
         private const int buttonWidth = 25;
-         
- 
+
+
         private GameObject goAvatar;
         private GameObject skeleton;
         private Transform skeletonRoot;
@@ -37,8 +37,8 @@ namespace SkinnedPreview
         public bool combine = true;
 
         public float uiScale = 1f;
-         
- 
+
+
 
         // Use this for initialization
         void Start()
@@ -179,9 +179,9 @@ namespace SkinnedPreview
 
             }
         }
-         
 
- 
+
+
 
         private void InitCharacter()
         {
@@ -190,7 +190,7 @@ namespace SkinnedPreview
             goAvatar = go;
             avatarConfig = avatars[selectedAvatarIndex];
 
-        
+
 
             ResetSkin();
         }
@@ -205,9 +205,7 @@ namespace SkinnedPreview
 
             skeleton.transform.position = Vector3.zero;
             skeleton.transform.rotation = Quaternion.identity;
-            skeleton.transform.localScale = Vector3.one * avatarConfig.config.scale;
             skeleton.name = avatarConfig.skeleton.name;
-            skeletonRoot = skeleton.transform.Find(avatarConfig.config.skeletonRootPath);
 
             skinned = skeleton.AddComponent<SkinnedCombine>();
 
@@ -310,34 +308,44 @@ namespace SkinnedPreview
                 avatarres.skeleton = avatar.skeleton;
                 avatarres.config = avatar;
 
-                string dir = avatar.animationDirectory;
-                if (string.IsNullOrEmpty(dir))
-                    dir = avatar.baseDirectory;
-
-                Regex regex = null;
-                if (!string.IsNullOrEmpty(dir))
+                var clips = AnimationUtility.GetAnimationClips(avatar.skeleton);
+                if (clips != null)
                 {
-                    regex = new Regex(avatar.animationNamePattern);
-                    foreach (var clip in FindAssets<AnimationClip>("t:AnimationClip", new string[] { dir }))
+                    foreach (var clip in clips)
                     {
-                        string assetPath = AssetDatabase.GetAssetPath(clip);
-                        var modelImporter = AssetImporter.GetAtPath(assetPath) as ModelImporter;
-                        if (modelImporter)
-                        {
-                            if (modelImporter.animationType != ModelImporterAnimationType.Legacy)
-                            {
-                                continue;
-                            }
-                        }
-
-                        Match m = regex.Match(assetPath);
-                        if (m.Success)
-                        {
-                            avatarres.animations.Add(clip);
-                            avatarres.animationNames.Add(clip.name);
-                        }
+                        avatarres.animations.Add(clip);
+                        avatarres.animationNames.Add(clip.name);
                     }
                 }
+
+                //string dir = avatar.animationDirectory;
+                //if (string.IsNullOrEmpty(dir))
+                //    dir = avatar.baseDirectory;
+
+                //Regex regex = null;
+                //if (!string.IsNullOrEmpty(dir))
+                //{
+                //    regex = new Regex(avatar.animationNamePattern);
+                //    foreach (var clip in FindAssets<AnimationClip>("t:AnimationClip", new string[] { dir }))
+                //    {
+                //        string assetPath = AssetDatabase.GetAssetPath(clip);
+                //        var modelImporter = AssetImporter.GetAtPath(assetPath) as ModelImporter;
+                //        if (modelImporter)
+                //        {
+                //            if (modelImporter.animationType != ModelImporterAnimationType.Legacy)
+                //            {
+                //                continue;
+                //            }
+                //        }
+
+                //        Match m = regex.Match(assetPath);
+                //        if (m.Success)
+                //        {
+                //            avatarres.animations.Add(clip);
+                //            avatarres.animationNames.Add(clip.name);
+                //        }
+                //    }
+                //}
 
                 if (!string.IsNullOrEmpty(avatar.defaultAnimation))
                 {
@@ -351,7 +359,7 @@ namespace SkinnedPreview
                     }
                 }
 
-
+                string dir;
                 List<AvatarPartInfo> parts = new List<AvatarPartInfo>();
                 foreach (var partConfig in avatar.parts)
                 {
@@ -473,7 +481,7 @@ namespace SkinnedPreview
         }
 
 
-         
+
     }
 
 

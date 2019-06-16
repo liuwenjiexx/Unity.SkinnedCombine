@@ -4,6 +4,7 @@ using UnityEngine;
 using UnityEditor;
 using System.Text.RegularExpressions;
 using System;
+using UnityEditor.Animations;
 
 namespace SkinnedPreview
 {
@@ -28,6 +29,15 @@ namespace SkinnedPreview
         Animation animation;
         Animator animator;
         AvatarRes avatarRes;
+        private bool isDraging;
+        private Vector2 dragStartPos;
+        private float distance;
+        private float size;
+        private float height;
+        private Vector3 angels;
+        private float dragSpeed = 1f;
+        private List<AvatarRes> avatars = new List<AvatarRes>();
+        private bool combine = true;
 
         public SkinnedPreviewAsset Asset
         {
@@ -78,7 +88,7 @@ namespace SkinnedPreview
             {
                 DestroyImmediate(root.gameObject);
             }
-            // AnimationMode.StopAnimationMode();
+            AnimationMode.StopAnimationMode();
         }
 
 
@@ -131,16 +141,18 @@ namespace SkinnedPreview
                         }
                     }
                     size = (max - min).magnitude;
-                    distance = size * 2;
+                    distance = size * 1.3f;
                     height = (max - min).y;
                     skinned = skeleton.AddComponent<SkinnedCombine>();
                     animation = skeleton.GetComponent<Animation>();
                     animator = skeleton.GetComponent<Animator>();
 
-                    if (animation || animator)
+                    if (animator)
                     {
-                        //  AnimationMode.StartAnimationMode();
+                        if (avatarRes.config.animator)
+                            animator.runtimeAnimatorController = avatarRes.config.animator;
                     }
+
                     var smrs = skeleton.GetComponentsInChildren<SkinnedMeshRenderer>();
 
                     foreach (var smr in smrs)
@@ -171,28 +183,30 @@ namespace SkinnedPreview
 
         public void SelectAnimation(int index)
         {
-            if (!skeleton)
+            if (!skeleton || avatarRes.animationNames.Count == 0)
                 return;
-            avatarRes.selectedAnimationIndex = (index + avatarRes.animations.Count) % avatarRes.animations.Count;
-            if (avatarRes.selectedAnimationIndex >= avatarRes.animations.Count)
+            avatarRes.selectedAnimationIndex = (index + avatarRes.animationNames.Count) % avatarRes.animationNames.Count;
+            if (avatarRes.selectedAnimationIndex >= avatarRes.animationNames.Count)
                 return;
-            var clip = avatarRes.animations[avatarRes.selectedAnimationIndex];
-            string animName = clip.name;
+
+            string animName;
 
             if (animation != null)
             {
+                var clip = avatarRes.animations[avatarRes.selectedAnimationIndex];
+                animName = clip.name;
                 animation.wrapMode = WrapMode.Loop;
-                //animation.Stop();
-                //animation.Play(animName);
                 animation.clip = clip;
             }
             else
             {
                 if (animator)
                 {
+                    animName = avatarRes.animationNames[avatarRes.selectedAnimationIndex];
                     animator.Play(animName);
                 }
             }
+            UpdateAnimation(skeleton);
         }
         public override void OnInteractivePreviewGUI(Rect r, GUIStyle background)
         {
@@ -246,13 +260,13 @@ namespace SkinnedPreview
                  SelectAvatar(selectedAvatarIndex + 1);
              });
 
-            itemRect = GUIOptions(itemRect, avatarRes.animationNames[avatarRes.selectedAnimationIndex], () =>
-            {
-                SelectAnimation(avatarRes.selectedAnimationIndex - 1);
-            }, () =>
-            {
-                SelectAnimation(avatarRes.selectedAnimationIndex + 1);
-            });
+            itemRect = GUIOptions(itemRect, avatarRes.animationNames.Count > 0 ? avatarRes.animationNames[avatarRes.selectedAnimationIndex] : "(None)", () =>
+                 {
+                     SelectAnimation(avatarRes.selectedAnimationIndex - 1);
+                 }, () =>
+                 {
+                     SelectAnimation(avatarRes.selectedAnimationIndex + 1);
+                 });
 
 
             var parts = avatarRes.awatarParts;
@@ -276,6 +290,8 @@ namespace SkinnedPreview
 
         void UpdateAnimation(GameObject go)
         {
+
+
             animtionDeltaTime = (float)EditorApplication.timeSinceStartup - lastAnimationTime;
             animationTime += animtionDeltaTime;
             lastAnimationTime = (float)EditorApplication.timeSinceStartup;
@@ -291,10 +307,11 @@ namespace SkinnedPreview
                     }
                     if (animationTime > anim.clip.length)
                         animationTime = 0;
+
                     if (!AnimationMode.InAnimationMode())
                         AnimationMode.StartAnimationMode();
                     AnimationMode.SampleAnimationClip(skeleton, anim.clip, animationTime);
-                    AnimationMode.StopAnimationMode();
+                    //AnimationMode.StopAnimationMode();
 
                 }
                 else
@@ -328,13 +345,6 @@ namespace SkinnedPreview
         }
 
 
-        private bool isDraging;
-        private Vector2 dragStartPos;
-        private float distance;
-        private float size;
-        private float height;
-        private Vector3 angels;
-        private float dragSpeed = 1f;
         void OnGUIDrag()
         {
             Event e = Event.current;
@@ -376,7 +386,7 @@ namespace SkinnedPreview
 
             if (e.type == EventType.ScrollWheel)
             {
-                distance += e.delta.y * size * 0.1f;
+                distance += e.delta.y * size * 0.05f;
                 distance = Mathf.Clamp(distance, size * 0.3f, size * 3);
                 e.Use();
             }
@@ -384,7 +394,6 @@ namespace SkinnedPreview
         }
 
 
-        private List<AvatarRes> avatars = new List<AvatarRes>();
 
         private void CreateAllAvatarRes()
         {
@@ -399,26 +408,48 @@ namespace SkinnedPreview
                 avatarres.skeleton = avatar.skeleton;
                 avatarres.config = avatar;
 
-                var clips = AnimationUtility.GetAnimationClips(avatar.skeleton);
-                if (clips != null)
+                Animator animator = null;
+                if (avatar.skeleton)
                 {
-                    foreach (var clip in clips)
+                    animator = avatar.skeleton.GetComponent<Animator>();
+                }
+                AnimatorController ac = null;
+                if (avatar.animator)
+                    ac = avatar.animator as AnimatorController;
+                if (!ac && animator)
+                {
+                    ac = animator.runtimeAnimatorController as AnimatorController;
+                }
+                if (ac)
+                {
+                    foreach (var layer in ac.layers)
                     {
-                        avatarres.animations.Add(clip);
-                        avatarres.animationNames.Add(clip.name);
+                        foreach (var state in layer.stateMachine.states)
+                        {
+                            avatarres.animationNames.Add(state.state.name);
+                        }
+
                     }
                 }
-
-                string dir = avatar.animationDirectory;
-                if (string.IsNullOrEmpty(dir))
-                    dir = avatar.baseDirectory;
+                else
+                {
+                    var clips = AnimationUtility.GetAnimationClips(avatar.skeleton);
+                    if (clips != null)
+                    {
+                        foreach (var clip in clips)
+                        {
+                            avatarres.animations.Add(clip);
+                            avatarres.animationNames.Add(clip.name);
+                        }
+                    }
+                }
 
 
                 if (!string.IsNullOrEmpty(avatar.defaultAnimation))
                 {
-                    for (int i = 0; i < avatarres.animations.Count; i++)
+                    for (int i = 0; i < avatarres.animationNames.Count; i++)
                     {
-                        if (avatarres.animations[i].name == avatar.defaultAnimation)
+                        if (avatarres.animationNames[i] == avatar.defaultAnimation)
                         {
                             avatarres.selectedAnimationIndex = i;
                             break;
@@ -426,7 +457,7 @@ namespace SkinnedPreview
                     }
                 }
 
-
+                string dir;
                 List<AvatarPartInfo> parts = new List<AvatarPartInfo>();
                 foreach (var partConfig in avatar.parts)
                 {
@@ -473,7 +504,6 @@ namespace SkinnedPreview
 
         }
 
-        private bool combine = true;
 
         Rect AddCategory(Rect rect, int parttype, string displayName)
         {
