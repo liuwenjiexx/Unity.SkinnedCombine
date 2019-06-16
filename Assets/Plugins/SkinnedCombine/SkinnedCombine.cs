@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using System.Linq;
 
-
+[ExecuteInEditMode]
 public class SkinnedCombine : MonoBehaviour
 {
     private List<SkinnedPart> parts;

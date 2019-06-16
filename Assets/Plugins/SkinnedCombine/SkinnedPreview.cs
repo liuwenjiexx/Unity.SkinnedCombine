@@ -15,16 +15,13 @@ namespace SkinnedPreview
 
     public class SkinnedPreview : MonoBehaviour
     {
-        #region 常量
-
+ 
 
         private const int typeWidth = 120;
         private const int typeheight = 25;
         private const int buttonWidth = 25;
-
-        #endregion
-
-        #region 变量
+         
+ 
         private GameObject goAvatar;
         private GameObject skeleton;
         private Transform skeletonRoot;
@@ -40,10 +37,8 @@ namespace SkinnedPreview
         public bool combine = true;
 
         public float uiScale = 1f;
-
-        #endregion
-
-        #region 内置函数
+         
+ 
 
         // Use this for initialization
         void Start()
@@ -184,10 +179,9 @@ namespace SkinnedPreview
 
             }
         }
+         
 
-        #endregion
-
-        #region 函数
+ 
 
         private void InitCharacter()
         {
@@ -479,8 +473,7 @@ namespace SkinnedPreview
         }
 
 
-
-        #endregion
+         
     }
 
 
