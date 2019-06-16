@@ -131,8 +131,11 @@ public class SkinnedCombine : MonoBehaviour
 
             foreach (SkinnedMeshRenderer smr in go.GetComponentsInChildren<SkinnedMeshRenderer>())
             {
+                if (Application.isPlaying)
+                    materials.AddRange(smr.materials);
+                else
+                    materials.AddRange(smr.sharedMaterials);
 
-                materials.AddRange(smr.materials);
                 for (int sub = 0; sub < smr.sharedMesh.subMeshCount; sub++)
                 {
                     CombineInstance ci = new CombineInstance();

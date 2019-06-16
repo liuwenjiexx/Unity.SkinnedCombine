@@ -9,6 +9,9 @@ namespace SkinnedPreview
     [CreateAssetMenu(fileName = "SkinnedPreview.asset", menuName = "Skinned Preview")]
     public class SkinnedPreviewAsset : ScriptableObject
     {
+        public Color ambientColor = new Color(0.5f, 0.5f, 0.5f);
+        [Range(0f,1f)]
+        public float lightIntensity = 1f;
         public AvatarConfig[] avatars;
 
         [System.Serializable]

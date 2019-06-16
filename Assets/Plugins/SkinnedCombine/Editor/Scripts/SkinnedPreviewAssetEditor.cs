@@ -15,8 +15,9 @@ namespace SkinnedPreview
         SkinnedCombine skinned;
         private Transform root;
         private int selectedAvatarIndex;
-        private float time;
-        private float lastTime;
+        private float animationTime;
+        private float animtionDeltaTime;
+        private float lastAnimationTime;
 
         private static float selectedWidth = 120;
         private static float selectedHeight = EditorGUIUtility.singleLineHeight;
@@ -37,17 +38,18 @@ namespace SkinnedPreview
         {
             if (previewRender == null)
             {
-                previewRender = new PreviewRenderUtility(true);
+                previewRender = new PreviewRenderUtility(false);
 
                 previewRender.cameraFieldOfView = 60f;
                 previewRender.camera.nearClipPlane = 0.1f;
                 previewRender.camera.farClipPlane = 100;
+                previewRender.camera.clearFlags = CameraClearFlags.Color;
             }
 
             if (!root)
             {
                 root = new GameObject("skinned preview root").transform;
-                //previewRender.AddSingleGO(root.gameObject);
+                previewRender.AddSingleGO(root.gameObject);
                 CreateAllAvatarRes();
                 SelectAvatar(0);
             }
@@ -56,7 +58,7 @@ namespace SkinnedPreview
 
         private void DestroyInstances()
         {
-            return;
+
             if (skeleton)
             {
                 DestroyImmediate(skeleton);
@@ -71,13 +73,12 @@ namespace SkinnedPreview
                 previewRender = null;
             }
 
-            return;
             DestroyInstances();
             if (root)
             {
                 DestroyImmediate(root.gameObject);
             }
-            AnimationMode.StopAnimationMode();
+            // AnimationMode.StopAnimationMode();
         }
 
 
@@ -111,6 +112,8 @@ namespace SkinnedPreview
                 if (avatarRes.skeleton)
                 {
                     skeleton = Instantiate(avatarRes.skeleton);
+                    //skeleton.transform.forward = -Vector3.forward;
+                    skeleton.transform.eulerAngles = new Vector3(0, 90, 0);
                     skeleton.transform.parent = root;
                     bool first = true;
                     Vector3 min = new Vector3(), max = new Vector3();
@@ -136,7 +139,7 @@ namespace SkinnedPreview
 
                     if (animation || animator)
                     {
-                        AnimationMode.StartAnimationMode();
+                        //  AnimationMode.StartAnimationMode();
                     }
                     var smrs = skeleton.GetComponentsInChildren<SkinnedMeshRenderer>();
 
@@ -198,20 +201,28 @@ namespace SkinnedPreview
         public override void OnPreviewGUI(Rect r, GUIStyle background)
         {
 
-            if (!Application.isPlaying)
-                return;
+            //if (!Application.isPlaying)
+            //    return;
             InitPreview();
-
+            var asset = Asset;
+            bool fog = RenderSettings.fog;
+            Unsupported.SetRenderSettingsUseFogNoDirty(false);
             previewRender.BeginPreview(r, background);
+            previewRender.ambientColor = asset.ambientColor;
+            previewRender.lights[0].intensity = asset.lightIntensity;
+
+
             Camera camera = previewRender.camera;
 
             if (skeleton)
             {
-                camera.transform.position = skeleton.transform.position + Quaternion.Euler(angels) * new Vector3(0, height, distance);
+                camera.transform.position = skeleton.transform.position + Quaternion.Euler(angels) * skeleton.transform.rotation * new Vector3(0, height, distance);
                 camera.transform.LookAt(skeleton.transform.position + new Vector3(0, height * 1f, 0), skeleton.transform.up);
             }
             camera.Render();
             previewRender.EndAndDrawPreview(r);
+
+            Unsupported.SetRenderSettingsUseFogNoDirty(fog);
 
             Rect itemRect = new Rect(r.x, r.y, selectedWidth, selectedHeight);
 
@@ -226,16 +237,7 @@ namespace SkinnedPreview
                 combine = !combine;
             }
             itemRect.y += itemRect.height + spaceWidth;
-            //if (GUI.Button(new Rect(itemRect.x, itemRect.y, buttonWidth, itemRect.height), "<"))
-            //{
-            //}
-            //itemRect.x += buttonWidth + spaceWidth;
-            //GUI.Box(new Rect(itemRect.x, itemRect.y, labelWidth, itemRect.height), avatarRes.name);
-            //itemRect.x += labelWidth + spaceWidth;
-            //if (GUI.Button(new Rect(itemRect.x, itemRect.y, buttonWidth, itemRect.height), ">"))
-            //{
-            //    SelectAvatar(selectedAvatarIndex - 1);
-            //}
+
             itemRect = GUIOptions(itemRect, avatarRes.name, () =>
              {
                  SelectAvatar(selectedAvatarIndex - 1);
@@ -243,8 +245,7 @@ namespace SkinnedPreview
              {
                  SelectAvatar(selectedAvatarIndex + 1);
              });
-            //itemRect.x = r.x;
-            //itemRect.y += selectedHeight + spaceWidth;
+
             itemRect = GUIOptions(itemRect, avatarRes.animationNames[avatarRes.selectedAnimationIndex], () =>
             {
                 SelectAnimation(avatarRes.selectedAnimationIndex - 1);
@@ -252,20 +253,6 @@ namespace SkinnedPreview
             {
                 SelectAnimation(avatarRes.selectedAnimationIndex + 1);
             });
-            //if (GUI.Button(new Rect(itemRect.x, itemRect.y, buttonWidth, itemRect.height), "<"))
-            //{
-            //    SelectAnimation(avatarRes.selectedAnimationIndex - 1);
-            //}
-            //itemRect.x += buttonWidth + spaceWidth;
-            //GUI.Box(new Rect(itemRect.x, itemRect.y, labelWidth, itemRect.height), avatarRes.animationNames[avatarRes.selectedAnimationIndex]);
-            //itemRect.x += labelWidth + spaceWidth;
-            //if (GUI.Button(new Rect(itemRect.x, itemRect.y, buttonWidth, itemRect.height), ">"))
-            //{
-            //    SelectAnimation(avatarRes.selectedAnimationIndex + 1);
-            //}
-            //itemRect.x = r.x;
-            //itemRect.y += selectedHeight + spaceWidth;
-
 
 
             var parts = avatarRes.awatarParts;
@@ -273,8 +260,6 @@ namespace SkinnedPreview
             {
                 itemRect = AddCategory(itemRect, i, parts[i].partName);
 
-                //itemRect.x = r.x;
-                //itemRect.y += selectedHeight + spaceWidth;
             }
 
             OnGUIDrag();
@@ -283,23 +268,43 @@ namespace SkinnedPreview
             {
                 if (skeleton)
                 {
-                    var anim = skeleton.GetComponent<Animation>();
-                    if (anim)
+                    UpdateAnimation(skeleton);
+                    Repaint();
+                }
+            }
+        }
+
+        void UpdateAnimation(GameObject go)
+        {
+            animtionDeltaTime = (float)EditorApplication.timeSinceStartup - lastAnimationTime;
+            animationTime += animtionDeltaTime;
+            lastAnimationTime = (float)EditorApplication.timeSinceStartup;
+
+            if (go)
+            {
+                var anim = go.GetComponent<Animation>();
+                if (anim)
+                {
+                    if (!anim.isPlaying)
                     {
-                        if (!anim.isPlaying)
-                        {
-                            anim.Play();
-                        }
-                        float deltaTime = (float)EditorApplication.timeSinceStartup - lastTime;
-                        time += deltaTime;
-                        lastTime = (float)EditorApplication.timeSinceStartup;
-                        if (time > anim.clip.length)
-                            time = 0;
-                        AnimationMode.SampleAnimationClip(skeleton, anim.clip, time);
-                        Repaint();
+                        anim.Play();
+                    }
+                    if (animationTime > anim.clip.length)
+                        animationTime = 0;
+                    if (!AnimationMode.InAnimationMode())
+                        AnimationMode.StartAnimationMode();
+                    AnimationMode.SampleAnimationClip(skeleton, anim.clip, animationTime);
+                    AnimationMode.StopAnimationMode();
+
+                }
+                else
+                {
+                    Animator animator = go.GetComponent<Animator>();
+                    if (animator)
+                    {
+                        animator.Update(animtionDeltaTime);
                     }
                 }
-
             }
         }
 
@@ -348,10 +353,12 @@ namespace SkinnedPreview
                         dragStartPos = e.mousePosition;
                         Repaint();
                     }
+                    e.Use();
                 }
                 else if (e.type == EventType.MouseUp)
                 {
                     isDraging = false;
+                    e.Use();
                 }
             }
             else
@@ -362,6 +369,7 @@ namespace SkinnedPreview
                     {
                         dragStartPos = e.mousePosition;
                         isDraging = true;
+                        e.Use();
                     }
                 }
             }
@@ -370,6 +378,7 @@ namespace SkinnedPreview
             {
                 distance += e.delta.y * size * 0.1f;
                 distance = Mathf.Clamp(distance, size * 0.3f, size * 3);
+                e.Use();
             }
 
         }
@@ -404,31 +413,6 @@ namespace SkinnedPreview
                 if (string.IsNullOrEmpty(dir))
                     dir = avatar.baseDirectory;
 
-                //Regex regex = null;
-                //if (!string.IsNullOrEmpty(dir))
-                //{
-                //    regex = new Regex(avatar.animationNamePattern);
-
-                //foreach (var clip in FindAssets<AnimationClip>("t:AnimationClip", new string[] { dir }))
-                //{
-                //    string assetPath = AssetDatabase.GetAssetPath(clip);
-                //    var modelImporter = AssetImporter.GetAtPath(assetPath) as ModelImporter;
-                //    if (modelImporter)
-                //    {
-                //        if (modelImporter.animationType != ModelImporterAnimationType.Legacy)
-                //        {
-                //            continue;
-                //        }
-                //    }
-
-                //    Match m = regex.Match(assetPath);
-                //    if (m.Success)
-                //    {
-                //        avatarres.animations.Add(clip);
-                //        avatarres.animationNames.Add(clip.name);
-                //    }
-                //}
-                //}
 
                 if (!string.IsNullOrEmpty(avatar.defaultAnimation))
                 {
@@ -508,20 +492,6 @@ namespace SkinnedPreview
                 selectedIndex = (selectedIndex + part.parts.Length) % part.parts.Length;
             });
 
-            //if (GUI.Button(new Rect(rect.x, rect.y, buttonWidth, selectedHeight), "<"))
-            //{
-            //    selectedIndex--;
-            //    selectedIndex = (selectedIndex + part.parts.Length) % part.parts.Length;
-            //}
-            //rect.x += buttonWidth + spaceWidth;
-            //GUI.Box(new Rect(rect.x, rect.y, labelWidth, selectedHeight), displayName + "(" + (part.parts.Length > 0 ? part.partNames[selectedIndex] : "") + ")");
-            //rect.x += labelWidth + spaceWidth;
-            //if (GUI.Button(new Rect(rect.x, rect.y, buttonWidth, selectedHeight), ">"))
-            //{
-            //    selectedIndex++;
-            //    selectedIndex = (selectedIndex + part.parts.Length) % part.parts.Length;
-
-            //}
 
             if (selectedIndex != avatarRes.selectedIndexs[parttype])
             {
