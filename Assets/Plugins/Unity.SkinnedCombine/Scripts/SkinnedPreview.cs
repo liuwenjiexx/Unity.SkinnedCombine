@@ -304,7 +304,7 @@ namespace SkinnedPreview
 
                 AvatarRes avatarres = new AvatarRes();
 
-                avatarres.name = avatar.name;
+                //avatarres.name = avatar.name;
                 avatarres.skeleton = avatar.skeleton;
                 avatarres.config = avatar;
 

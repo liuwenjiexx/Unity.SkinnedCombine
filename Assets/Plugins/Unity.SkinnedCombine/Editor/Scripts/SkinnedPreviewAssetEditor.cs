@@ -5,6 +5,8 @@ using UnityEditor;
 using System.Text.RegularExpressions;
 using System;
 using UnityEditor.Animations;
+using System.Linq;
+
 
 namespace SkinnedPreview
 {
@@ -61,7 +63,7 @@ namespace SkinnedPreview
                 root = new GameObject("skinned preview root").transform;
                 previewRender.AddSingleGO(root.gameObject);
                 CreateAllAvatarRes();
-                SelectAvatar(0);
+
             }
 
         }
@@ -103,6 +105,11 @@ namespace SkinnedPreview
 
         private void SelectAvatar(int index)
         {
+
+            DestroyInstances();
+            if (Asset.avatars.Length == 0)
+                return;
+
             index = (index + Asset.avatars.Length) % Asset.avatars.Length;
             selectedAvatarIndex = index;
 
@@ -116,7 +123,6 @@ namespace SkinnedPreview
                 avatarRes = avatars[selectedAvatarIndex];
             }
 
-            DestroyInstances();
             if (avatarRes != null)
             {
                 if (avatarRes.skeleton)
@@ -155,21 +161,27 @@ namespace SkinnedPreview
 
                     var smrs = skeleton.GetComponentsInChildren<SkinnedMeshRenderer>();
 
-                    foreach (var smr in smrs)
+                    if (avatarRes.awatarParts.Length > 0)
                     {
-                        smr.materials = new Material[0];
-                    }
-                    skinned.Clear();
-                    for (int i = 0; i < avatarRes.awatarParts.Length; i++)
-                    {
-                        var part = avatarRes.awatarParts[i];
-                        int partIndex = avatarRes.selectedIndexs[i];
-                        if (!(0 <= partIndex && partIndex < avatarRes.selectedIndexs.Length))
-                            continue;
-                        skinned.AddPart(part.partName, part.parts[partIndex], combine);
-                    }
+                        foreach (var smr in smrs)
+                        {
+           
+                            //if (smr.gameObject!=skeleton&& avatarRes.awatarParts.Where(o => string.Equals(o.partName, smr.name, StringComparison.InvariantCultureIgnoreCase)).Count() == 0)
+                            //    continue;
+                            smr.materials = new Material[0];
+                        }
+                        skinned.Clear();
+                        for (int i = 0; i < avatarRes.awatarParts.Length; i++)
+                        {
+                            var part = avatarRes.awatarParts[i];
+                            int partIndex = avatarRes.selectedIndexs[i];
+                            if (!(0 <= partIndex && partIndex < avatarRes.selectedIndexs.Length))
+                                continue;
+                            skinned.AddPart(part.partName, part.parts[partIndex], combine);
+                        }
 
-                    skinned.GennerateSkin();
+                        skinned.GennerateSkin();
+                    }
 
                 }
             }
@@ -214,11 +226,12 @@ namespace SkinnedPreview
         }
         public override void OnPreviewGUI(Rect r, GUIStyle background)
         {
-
             //if (!Application.isPlaying)
             //    return;
             InitPreview();
             var asset = Asset;
+
+
             bool fog = RenderSettings.fog;
             Unsupported.SetRenderSettingsUseFogNoDirty(false);
             previewRender.BeginPreview(r, background);
@@ -240,11 +253,12 @@ namespace SkinnedPreview
 
             Rect itemRect = new Rect(r.x, r.y, selectedWidth, selectedHeight);
 
-            if (GUI.Button(itemRect, "Refresh"))
+    
+            if (avatarRes == null)
             {
-                CreateAllAvatarRes();
+                GUI.Label(itemRect, "Avatars Empty");
+                return;
             }
-            itemRect.y += itemRect.height + spaceWidth;
 
             if (GUI.Toggle(new Rect(itemRect.x, itemRect.y, selectedWidth, selectedHeight), combine, "Combine") != combine)
             {
@@ -276,7 +290,7 @@ namespace SkinnedPreview
 
             }
 
-            OnGUIDrag();
+            OnGUIDrag(r);
 
             if (Event.current.type == EventType.Repaint)
             {
@@ -345,7 +359,7 @@ namespace SkinnedPreview
         }
 
 
-        void OnGUIDrag()
+        void OnGUIDrag(Rect rect)
         {
             Event e = Event.current;
 
@@ -375,7 +389,7 @@ namespace SkinnedPreview
             {
                 if (e.type == EventType.MouseDown)
                 {
-                    if (!isDraging)
+                    if (!isDraging && rect.Contains(e.mousePosition))
                     {
                         dragStartPos = e.mousePosition;
                         isDraging = true;
@@ -399,18 +413,25 @@ namespace SkinnedPreview
         {
             var config = Asset;
             avatars.Clear();
+            if (config.avatars == null)
+            {
+                SelectAvatar(0);
+                return;
+            }
             foreach (var avatar in config.avatars)
             {
 
                 AvatarRes avatarres = new AvatarRes();
 
-                avatarres.name = avatar.name;
+                avatarres.name = "";
                 avatarres.skeleton = avatar.skeleton;
                 avatarres.config = avatar;
+
 
                 Animator animator = null;
                 if (avatar.skeleton)
                 {
+                    avatarres.name = avatar.skeleton.name;
                     animator = avatar.skeleton.GetComponent<Animator>();
                 }
                 AnimatorController ac = null;
@@ -501,7 +522,7 @@ namespace SkinnedPreview
                 avatars.Add(avatarres);
             }
 
-
+            SelectAvatar(0);
         }
 
 
@@ -531,6 +552,13 @@ namespace SkinnedPreview
             return rect;
         }
 
+        public override void OnPreviewSettings()
+        {
+            if (GUILayout.Button("R"))
+            {
+                CreateAllAvatarRes();
+            }
+        }
 
         public class AvatarRes
         {

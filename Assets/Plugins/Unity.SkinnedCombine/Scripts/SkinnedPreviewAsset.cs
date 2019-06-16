@@ -17,7 +17,6 @@ namespace SkinnedPreview
         [System.Serializable]
         public class AvatarConfig : ISerializationCallbackReceiver
         {
-            public string name;
             public GameObject skeleton;
             public RuntimeAnimatorController animator; 
             public string baseDirectory;             
