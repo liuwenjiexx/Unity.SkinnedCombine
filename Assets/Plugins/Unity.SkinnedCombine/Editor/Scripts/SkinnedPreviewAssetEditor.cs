@@ -23,7 +23,7 @@ namespace SkinnedPreview
         private float lastAnimationTime;
 
         private static float selectedWidth = 120;
-        private static float selectedHeight = EditorGUIUtility.singleLineHeight;
+        private static float selectedHeight = EditorGUIUtility.singleLineHeight+2;
         private static float buttonWidth = 20;
         private static float spaceWidth = 2;
         private static float labelWidth = selectedWidth - buttonWidth * 2 - spaceWidth * 2;
@@ -165,7 +165,7 @@ namespace SkinnedPreview
                     {
                         foreach (var smr in smrs)
                         {
-           
+
                             //if (smr.gameObject!=skeleton&& avatarRes.awatarParts.Where(o => string.Equals(o.partName, smr.name, StringComparison.InvariantCultureIgnoreCase)).Count() == 0)
                             //    continue;
                             smr.materials = new Material[0];
@@ -253,7 +253,7 @@ namespace SkinnedPreview
 
             Rect itemRect = new Rect(r.x, r.y, selectedWidth, selectedHeight);
 
-    
+
             if (avatarRes == null)
             {
                 GUI.Label(itemRect, "Avatars Empty");
@@ -499,14 +499,11 @@ namespace SkinnedPreview
                             {
                                 string assetPath = AssetDatabase.GUIDToAssetPath(guid);
                                 var m = fileRegex.Match(assetPath);
-                                if (!m.Success)
+                                if (!m.Success || m.Groups["result"] == null || !m.Groups["result"].Success)
                                     continue;
                                 GameObject go = AssetDatabase.LoadAssetAtPath<GameObject>(assetPath);
-                                if (m.Groups.Count > 1)
-                                    nameList.Add(m.Groups[1].Value);
-                                else
-                                    nameList.Add(go.name);
 
+                                nameList.Add(m.Groups["result"].Value);
                                 list.Add(go);
                             }
                             part.parts = list.ToArray();
