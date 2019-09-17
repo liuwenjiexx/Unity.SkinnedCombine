@@ -8,5 +8,5 @@
     "unity"
   ],
   "category": "Unity",
-  "repoPackagePath": "Build/Packages"
+  "repoPackagePath": "../UnityPackages"
 }
