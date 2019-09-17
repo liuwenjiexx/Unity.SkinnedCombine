@@ -8,7 +8,7 @@ using UnityEditor.Animations;
 using System.Linq;
 
 
-namespace SkinnedPreview
+namespace UnityEngine
 {
     [CustomEditor(typeof(SkinnedPreviewAsset))]
     public class SkinnedPreviewAssetEditor : Editor
