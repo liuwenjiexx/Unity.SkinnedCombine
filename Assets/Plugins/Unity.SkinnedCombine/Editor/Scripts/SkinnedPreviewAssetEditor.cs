@@ -177,6 +177,8 @@ namespace UnityEngine
                             int partIndex = avatarRes.selectedIndexs[i];
                             if (!(0 <= partIndex && partIndex < avatarRes.selectedIndexs.Length))
                                 continue;
+                            if (partIndex >= part.parts.Length)
+                                continue;
                             skinned.AddPart(part.partName, part.parts[partIndex], combine);
                         }
 
