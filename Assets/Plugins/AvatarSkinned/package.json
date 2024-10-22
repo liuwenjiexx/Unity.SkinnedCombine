@@ -1,0 +1,13 @@
+{
+  "name": "com.unity.avatar-skinned",
+  "displayName": "Avatar Skinned",
+  "version": "0.0.1",
+  "unity": "2018.3",
+  "description": "",
+  "keywords": [
+    "avatar",
+    "skinned",
+    "combine"
+  ],
+  "category": "Avatar"
+}

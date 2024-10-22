@@ -1,9 +1,9 @@
 {
     "name": "Unity.SkinnedCombine.Editor",
+    "rootNamespace": "",
     "references": [
-        "Unity.SkinnedCombine"
+        "GUID:6b1d36ab564dd764f85ddde47e4a376c"
     ],
-    "optionalUnityReferences": [],
     "includePlatforms": [
         "Editor"
     ],
@@ -12,5 +12,7 @@
     "overrideReferences": false,
     "precompiledReferences": [],
     "autoReferenced": true,
-    "defineConstraints": []
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
 }
