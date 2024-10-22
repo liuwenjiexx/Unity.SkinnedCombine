@@ -19,7 +19,7 @@ namespace UnityEngine
         public IEnumerable<string> Parts { get { return parts.Select(o => o.partName); } }
         private Dictionary<string, Transform> cachedSkeletons;
 
-
+         
         void Awake()
         {
             if (parts == null)

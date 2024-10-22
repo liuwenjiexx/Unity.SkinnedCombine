@@ -6,6 +6,7 @@ using System.Text.RegularExpressions;
 using System;
 using UnityEditor.Animations;
 using System.Linq;
+using static UnityEngine.SkinnedPreviewAssetEditor;
 
 
 namespace UnityEngine
@@ -17,19 +18,19 @@ namespace UnityEngine
         private GameObject skeleton;
         SkinnedCombine skinned;
         private Transform root;
-        private int selectedAvatarIndex;
         private float animationTime;
         private float animtionDeltaTime;
         private float lastAnimationTime;
 
-        private static float selectedWidth = 120;
-        private static float selectedHeight = EditorGUIUtility.singleLineHeight+2;
+        private static float selectedWidth = 200;
+        private static float selectedHeight = EditorGUIUtility.singleLineHeight + 2;
         private static float buttonWidth = 20;
         private static float spaceWidth = 2;
         private static float labelWidth = selectedWidth - buttonWidth * 2 - spaceWidth * 2;
 
         Animation animation;
         Animator animator;
+        [NonSerialized]
         AvatarRes avatarRes;
         private bool isDraging;
         private Vector2 dragStartPos;
@@ -38,7 +39,6 @@ namespace UnityEngine
         private float height;
         private Vector3 angels;
         private float dragSpeed = 1f;
-        private List<AvatarRes> avatars = new List<AvatarRes>();
         private bool combine = true;
 
         public SkinnedPreviewAsset Asset
@@ -103,25 +103,12 @@ namespace UnityEngine
             return new GUIContent("Skinned Preview");
         }
 
-        private void SelectAvatar(int index)
+        private void CreateAvatar()
         {
 
             DestroyInstances();
-            if (Asset.avatars.Length == 0)
-                return;
-
-            index = (index + Asset.avatars.Length) % Asset.avatars.Length;
-            selectedAvatarIndex = index;
 
             var asset = Asset;
-            if (selectedAvatarIndex >= asset.avatars.Length)
-            {
-                selectedAvatarIndex = 0;
-            }
-            if (selectedAvatarIndex < asset.avatars.Length)
-            {
-                avatarRes = avatars[selectedAvatarIndex];
-            }
 
             if (avatarRes != null)
             {
@@ -153,10 +140,13 @@ namespace UnityEngine
                     animation = skeleton.GetComponent<Animation>();
                     animator = skeleton.GetComponent<Animator>();
 
-                    if (animator)
+                    if (asset.animator)
                     {
-                        if (avatarRes.config.animator)
-                            animator.runtimeAnimatorController = avatarRes.config.animator;
+                        if (animation)
+                            DestroyImmediate(animation);
+                        if (!animator)
+                            animator = skeleton.AddComponent<Animator>();
+                        animator.runtimeAnimatorController = asset.animator;
                     }
 
                     var smrs = skeleton.GetComponentsInChildren<SkinnedMeshRenderer>();
@@ -268,13 +258,6 @@ namespace UnityEngine
             }
             itemRect.y += itemRect.height + spaceWidth;
 
-            itemRect = GUIOptions(itemRect, avatarRes.name, () =>
-             {
-                 SelectAvatar(selectedAvatarIndex - 1);
-             }, () =>
-             {
-                 SelectAvatar(selectedAvatarIndex + 1);
-             });
 
             itemRect = GUIOptions(itemRect, avatarRes.animationNames.Count > 0 ? avatarRes.animationNames[avatarRes.selectedAnimationIndex] : "(None)", () =>
                  {
@@ -294,6 +277,23 @@ namespace UnityEngine
 
             OnGUIDrag(r);
 
+            if (Event.current.type == EventType.KeyDown)
+            {
+                if (Event.current.keyCode == KeyCode.Space)
+                {
+                    if (animator)
+                    {
+                        var animName = avatarRes.animationNames[avatarRes.selectedAnimationIndex];
+                        animator.Play(animName, 0, 0f);
+                    }
+                    else
+                    {
+                        animationTime = 0f;
+                    }
+                    Event.current.Use();
+                }
+            }
+
             if (Event.current.type == EventType.Repaint)
             {
                 if (skeleton)
@@ -306,8 +306,6 @@ namespace UnityEngine
 
         void UpdateAnimation(GameObject go)
         {
-
-
             animtionDeltaTime = (float)EditorApplication.timeSinceStartup - lastAnimationTime;
             animationTime += animtionDeltaTime;
             lastAnimationTime = (float)EditorApplication.timeSinceStartup;
@@ -414,114 +412,83 @@ namespace UnityEngine
         private void CreateAllAvatarRes()
         {
             var config = Asset;
-            avatars.Clear();
-            if (config.avatars == null)
+
+
+
+            var avatarres = new AvatarRes();
+
+            avatarres.name = "";
+            avatarres.skeleton = config.skeleton;
+
+            Animator animator = null;
+            if (config.skeleton)
             {
-                SelectAvatar(0);
-                return;
+                avatarres.name = config.skeleton.name;
+                animator = config.skeleton.GetComponent<Animator>();
             }
-            foreach (var avatar in config.avatars)
+            AnimatorController ac = null;
+            if (config.animator)
+                ac = config.animator as AnimatorController;
+            if (!ac && animator)
             {
-
-                AvatarRes avatarres = new AvatarRes();
-
-                avatarres.name = "";
-                avatarres.skeleton = avatar.skeleton;
-                avatarres.config = avatar;
-
-
-                Animator animator = null;
-                if (avatar.skeleton)
+                ac = animator.runtimeAnimatorController as AnimatorController;
+            }
+            if (ac)
+            {
+                foreach (var layer in ac.layers)
                 {
-                    avatarres.name = avatar.skeleton.name;
-                    animator = avatar.skeleton.GetComponent<Animator>();
-                }
-                AnimatorController ac = null;
-                if (avatar.animator)
-                    ac = avatar.animator as AnimatorController;
-                if (!ac && animator)
-                {
-                    ac = animator.runtimeAnimatorController as AnimatorController;
-                }
-                if (ac)
-                {
-                    foreach (var layer in ac.layers)
+                    foreach (var state in layer.stateMachine.states)
                     {
-                        foreach (var state in layer.stateMachine.states)
-                        {
-                            avatarres.animationNames.Add(state.state.name);
-                        }
+                        avatarres.animationNames.Add(state.state.name);
 
                     }
+
                 }
-                else
+
+            }
+            else
+            {
+                var clips = AnimationUtility.GetAnimationClips(config.skeleton);
+                if (clips != null)
                 {
-                    var clips = AnimationUtility.GetAnimationClips(avatar.skeleton);
-                    if (clips != null)
+                    foreach (var clip in clips)
                     {
-                        foreach (var clip in clips)
-                        {
-                            avatarres.animations.Add(clip);
-                            avatarres.animationNames.Add(clip.name);
-                        }
+                        avatarres.animations.Add(clip);
+                        avatarres.animationNames.Add(clip.name);
                     }
                 }
-
-
-                if (!string.IsNullOrEmpty(avatar.defaultAnimation))
-                {
-                    for (int i = 0; i < avatarres.animationNames.Count; i++)
-                    {
-                        if (avatarres.animationNames[i] == avatar.defaultAnimation)
-                        {
-                            avatarres.selectedAnimationIndex = i;
-                            break;
-                        }
-                    }
-                }
-
-                string dir;
-                List<AvatarPartInfo> parts = new List<AvatarPartInfo>();
-                foreach (var partConfig in avatar.parts)
-                {
-                    var part = new AvatarPartInfo();
-                    part.partName = partConfig.partName;
-                    if (!string.IsNullOrEmpty(partConfig.namePattern))
-                    {
-                        Regex fileRegex = new Regex(partConfig.namePattern);
-                        dir = partConfig.directory;
-                        if (string.IsNullOrEmpty(dir))
-                            dir = avatar.partDirectory;
-
-                        if (!string.IsNullOrEmpty(dir))
-                        {
-                            List<GameObject> list = new List<GameObject>();
-                            List<string> nameList = new List<string>();
-                            foreach (string guid in AssetDatabase.FindAssets("t:Prefab t:Model", new string[] { dir }))
-                            {
-                                string assetPath = AssetDatabase.GUIDToAssetPath(guid);
-                                var m = fileRegex.Match(assetPath);
-                                if (!m.Success || m.Groups["result"] == null || !m.Groups["result"].Success)
-                                    continue;
-                                GameObject go = AssetDatabase.LoadAssetAtPath<GameObject>(assetPath);
-
-                                nameList.Add(m.Groups["result"].Value);
-                                list.Add(go);
-                            }
-                            part.parts = list.ToArray();
-                            part.partNames = nameList.ToArray();
-                        }
-                    }
-                    if (part.parts == null)
-                        part.parts = new GameObject[0];
-                    parts.Add(part);
-                }
-                avatarres.awatarParts = parts.ToArray();
-                avatarres.selectedIndexs = new int[avatarres.awatarParts.Length];
-                avatars.Add(avatarres);
             }
 
-            SelectAvatar(0);
+
+            if (!string.IsNullOrEmpty(config.defaultAnimation))
+            {
+                for (int i = 0; i < avatarres.animationNames.Count; i++)
+                {
+                    if (avatarres.animationNames[i] == config.defaultAnimation)
+                    {
+                        avatarres.selectedAnimationIndex = i;
+                        break;
+                    }
+                }
+            }
+
+            List<AvatarPartInfo> parts = new List<AvatarPartInfo>();
+            foreach (var partConfig in config.parts)
+            {
+                var part = new AvatarPartInfo();
+                part.partName = partConfig.name;
+                part.parts = partConfig.prefabs;
+                part.partNames = part.parts.Select(o => o.name).ToArray();
+
+                if (part.parts == null)
+                    part.parts = new GameObject[0];
+                parts.Add(part);
+            }
+            avatarres.awatarParts = parts.ToArray();
+            avatarres.selectedIndexs = new int[avatarres.awatarParts.Length];
+
+            avatarRes = avatarres;
+            CreateAvatar();
         }
 
 
@@ -565,7 +532,7 @@ namespace UnityEngine
             public GameObject skeleton;
             public List<AnimationClip> animations = new List<AnimationClip>();
             public List<string> animationNames = new List<string>();
-            public SkinnedPreviewAsset.AvatarConfig config;
+
 
             public int selectedAnimationIndex = 0;
 

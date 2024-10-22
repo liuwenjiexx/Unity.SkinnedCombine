@@ -11,35 +11,17 @@ namespace UnityEngine
         public Color ambientColor = new Color(0.5f, 0.5f, 0.5f);
         [Range(0f, 1f)]
         public float lightIntensity = 1f;
-        public AvatarConfig[] avatars;
 
-        [System.Serializable]
-        public class AvatarConfig : ISerializationCallbackReceiver
-        {
-            public GameObject skeleton;
-            public RuntimeAnimatorController animator;
-            public string baseDirectory;
-            public string defaultAnimation;
-            public string partDirectory;
-            public SkinnedPart[] parts;
-
-            public void OnAfterDeserialize()
-            {
-
-            }
-
-            public void OnBeforeSerialize()
-            {
-
-            }
-        }
+        public GameObject skeleton;
+        public RuntimeAnimatorController animator;
+        public string defaultAnimation;
+        public SkinnedPart[] parts;
 
         [System.Serializable]
         public class SkinnedPart : ISerializationCallbackReceiver
         {
-            public string partName;
-            public string directory;
-            public string namePattern;
+            public string name;
+            public GameObject[] prefabs;
 
             public void OnAfterDeserialize()
             {
