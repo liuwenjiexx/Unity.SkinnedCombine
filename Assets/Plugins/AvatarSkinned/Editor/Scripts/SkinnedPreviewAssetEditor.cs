@@ -5,14 +5,12 @@ using UnityEditor;
 using System.Text.RegularExpressions;
 using System;
 using UnityEditor.Animations;
-using System.Linq;
-using static UnityEngine.SkinnedPreviewAssetEditor;
+using System.Linq; 
 
-
-namespace UnityEngine
+namespace Unity.AvatarSkinned.Editor
 {
     [CustomEditor(typeof(SkinnedPreviewAsset))]
-    public class SkinnedPreviewAssetEditor : Editor
+    public class SkinnedPreviewAssetEditor : UnityEditor.Editor
     {
         private PreviewRenderUtility previewRender;
         private GameObject skeleton;

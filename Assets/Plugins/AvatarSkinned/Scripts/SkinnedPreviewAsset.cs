@@ -1,8 +1,9 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+using UnityEngine;
 
 
-namespace UnityEngine
+namespace Unity.AvatarSkinned
 {
 
     [CreateAssetMenu(fileName = "SkinnedPreview.asset", menuName = "Preview/Skinned Preview")]
